@@ -7,8 +7,11 @@ STT(speech-to-text) API의 실제(Ground truth)문장과 가설(hypothesis or tr
 
 문자 오류율(CER/WER)은 자동 음성 인식 시스템의 성능에 대한 일반적인 메트릭입니다. CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다. 자세한 내용은 WER 문서를 참조하십시오.[1]
 문자 오류율은 다음과 같이 계산할 수 있습니다. 
+---
 <img src="https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/pic/ER_CASE.png" width="90%">
-
+---
+<img src="https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/pic/FORMULA_CASE.png" width="90%">
+---
 CER(WER) = (S + D + I) / N = (S + D + I) / (S + D + C)
 
 - S : 대체 오휴, 철자가 틀린 외자(uniliteral)/단어(word) 횟수 
@@ -71,5 +74,5 @@ preds = "또! 다른 방법으로 데이터를 읽는 작업과 쓰는 작업을
 
 
 ### References 
-[1]. Word Error Rate, https://en.wikipedia.org/wiki/Word_error_rate
-[2]. Computing error rates, Text Digitisation, https://sites.google.com/site/textdigitisation/qualitymeasures/computingerrorrates
+`[1]`. Word Error Rate, https://en.wikipedia.org/wiki/Word_error_rate
+`[2]`. Computing error rates, Text Digitisation, https://sites.google.com/site/textdigitisation/qualitymeasures/computingerrorrates

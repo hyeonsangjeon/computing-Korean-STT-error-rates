@@ -56,7 +56,7 @@ class TestER(unittest.TestCase):
     def test_korean_wer_simple_sentence_case(self):
         refs = "대한민국은 주권 국가 입니다."
         preds = "대한민국은 주권국가 입니다."
-        # S = 1, D = 1, I = 0, N = 4, CER = 2 / 4
+        # S = 1, D = 1, I = 0, N = 4, WER = 2 / 4
         [wer, substitutions, deletions, insertions] = metrics.get_wer(refs, preds)
         expected_error_rate =0.5
         self.assertTrue(abs(wer - expected_error_rate) < 1e-6)

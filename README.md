@@ -43,6 +43,7 @@ import asr_metrics as metrics
 refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
 preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
 [cer, substitutions, deletions, insertions] = metrics.get_cer(refs, preds)
+# prints: [cer, substitutions, deletions, insertions] -> [CER = 0 / 34, S = 0, D = 0, I = 0]
 ```
 
 #### WER
@@ -51,6 +52,7 @@ import asr_metrics as metrics
 refs = "대한민국은 주권 국가 입니다."
 preds = "대한민국은 주권국가 입니다."
 [wer, substitutions, deletions, insertions] = metrics.get_wer(refs, preds)
+# prints: [wer, substitutions, deletions, insertions] -> [WER =  2 / 4, S = 1, D = 1, I = 0]
 ```
 
 ### 전처리 예 

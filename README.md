@@ -23,7 +23,7 @@ CER(WER) = (S + D + I) / N = (S + D + I) / (S + D + C)
 - S : 대체 오휴, 철자가 틀린 외자(uniliteral)/단어(word) 횟수 
 - D : 삭제 오류, 외자/단어의 누락 횟수
 - I : 삽입 오류, 잘못된 외자/단어가 포함된 횟수  
-- C : Ground truth와 hypothesis 간 올버룬 외자/단어(기호)의 합계, (N - D - S)
+- C : Ground truth와 hypothesis 간 올바른 외자/단어(기호)의 합계, (N - D - S)
 - N : 참조의(Ground truth) 외자/단어 수 
 
 CER의 출력은 특히 삽입 수가 많은 경우 항상 0과 1 사이의 숫자가 아닙니다. 이 값은 종종 잘못 예측된 문자의 백분율과 연관됩니다. 값이 낮을수록 ASR 시스템의 성능이 향상되고 CER이 0이면 완벽한 점수입니다.

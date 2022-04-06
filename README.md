@@ -40,6 +40,14 @@ CER 같은 경우, 번역 오류의 특성에 대한 세부 정보를 제공하�
 #### CER
 ```python
 import asr_metrics as metrics
+refs = "아키택트"
+preds = "아키택쳐"
+#prints: [cer, substitutions, deletions, insertions] -> [CER = 1 / 4, S = 1, D = 0, I = 0] 
+```
+
+
+```python
+import asr_metrics as metrics
 refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
 preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
 [cer, substitutions, deletions, insertions] = metrics.get_cer(refs, preds)

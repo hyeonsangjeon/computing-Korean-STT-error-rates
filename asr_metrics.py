@@ -56,7 +56,7 @@ def _measure_cer(
     ref.append(reference)
     hyp.append(transcription)
 
-    print("? : ", ref)
+    #print("? : ", ref)
 
     cer_s, cer_i, cer_d, cer_n = 0, 0, 0, 0
     sen_err = 0
@@ -76,7 +76,7 @@ def _measure_cer(
 
 
 
-    print("reference : ",reference)
+    #print("reference : ",reference)
     print("cer S : ", cer_s)
     print("cer I : ", cer_i)
     print("cer D : ", cer_d)
@@ -130,8 +130,8 @@ def _measure_wer(
 
 
 
-    print("reference : ",reference)
-    print("reference cnt : ", reference.split())
+    #print("reference : ",reference)
+    #print("reference cnt : ", reference.split())
     print("wer S : ", wer_s)
     print("wer I : ", wer_i)
     print("wer D : ", wer_d)
@@ -193,14 +193,14 @@ def get_cer(reference, transcription, rm_punctuation = True
         refs = reference
         trans = transcription
 
-    print("refs : ", refs)
+    #print("refs : ", refs)
 
     [hits ,cer_s, cer_d, cer_i] = _measure_cer(refs, trans)
 
     substitutions = cer_s
     deletions = cer_d
     insertions = cer_i
-    print("tmp hits : ", hits)
+    #print("tmp hits : ", hits)
     incorrect = substitutions + deletions + insertions
     total = substitutions + deletions + hits + insertions
 
@@ -228,7 +228,7 @@ def get_wer(reference, transcription, rm_punctuation = True
     substitutions = wer_s
     deletions = wer_d
     insertions = wer_i
-    print("tmp hits : ", hits)
+    #print("tmp hits : ", hits)
     incorrect = substitutions + deletions + insertions
     total = substitutions + deletions + hits + insertions
 

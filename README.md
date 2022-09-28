@@ -55,7 +55,11 @@ import nlptutti as metrics
 
 refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
 preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
-[cer, substitutions, deletions, insertions] = metrics.get_cer(refs, preds)
+result = metrics.get_cer(refs, preds)
+cer = result['cer']
+substitutions = result['substitutions']
+deletions = result['deletions']
+insertions = result['insertions']
 # prints: [cer, substitutions, deletions, insertions] -> [CER = 0 / 34, S = 0, D = 0, I = 0]
 ```
 
@@ -66,7 +70,12 @@ import nlptutti as metrics
 
 refs = "대한민국은 주권 국가 입니다."
 preds = "대한민국은 주권국가 입니다."
-[wer, substitutions, deletions, insertions] = metrics.get_wer(refs, preds)
+result = metrics.get_wer(refs, preds)
+
+wer = result['wer']
+substitutions = result['substitutions']
+deletions = result['deletions']
+insertions = result['insertions']
 # prints: [wer, substitutions, deletions, insertions] -> [WER =  2 / 4, S = 1, D = 1, I = 0]
 ```
 
@@ -89,9 +98,10 @@ STT 인식기에 따라 구두점을 처리하지 않는 경우가 많습니다.
 구두점 filter-> '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
 ```
 ```python
+import nlptutti as metrics
 refs = "또 다른 방법으로, 데이터를 읽는 작업과 쓰는 작업을 분리합니다!"
 preds = "또! 다른 방법으로 데이터를 읽는 작업과 쓰는 작업을 분리합니다."
-[wer, substitutions, deletions, insertions] = metrics.get_wer(refs, preds, rm_punctuation=True)
+result = metrics.get_wer(refs, preds, rm_punctuation=True)
 
 # prints: wer -> 0.0
 ```

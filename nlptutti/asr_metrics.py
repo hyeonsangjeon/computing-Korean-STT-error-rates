@@ -84,9 +84,11 @@ def _measure_cer(
 
 
     if cer_n > 0:
-        print('CER: %g%%, SER: %g%%' % (
-            (100.0 * (cer_s + cer_i + cer_d)) / cer_n,
-            (100.0 * sen_err) / len(ref)))
+        #print('CER: %g%%, SER: %g%%' % (
+        #    (100.0 * (cer_s + cer_i + cer_d)) / cer_n,
+        #    (100.0 * sen_err) / len(ref)))
+        print('CER: %g%%' % (
+            (100.0 * (cer_s + cer_i + cer_d)) / cer_n))
 
     substitutions = cer_s
     deletions = cer_d
@@ -139,9 +141,11 @@ def _measure_wer(
 
 
     if wer_n > 0:
-        print('WER: %g%%, SER: %g%%' % (
-            (100.0 * (wer_s + wer_i + wer_d)) / wer_n,
-            (100.0 * sen_err) / len(ref)))
+        #print('WER: %g%%, SER: %g%%' % (
+        #    (100.0 * (wer_s + wer_i + wer_d)) / wer_n,
+        #    (100.0 * sen_err) / len(ref)))
+        print('WER: %g%%' % (
+            (100.0 * (wer_s + wer_i + wer_d)) / wer_n))
 
     substitutions = wer_s
     deletions = wer_d

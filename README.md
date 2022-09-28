@@ -36,18 +36,23 @@ CER 같은 경우, 번역 오류의 특성에 대한 세부 정보를 제공하�
 
 ### 사용방법 
 가장 간단한 사용 사례는 두 문자열 간의 편집 거리를 계산하는 것입니다.
-
-#### CER
-```python
-import asr_metrics as metrics
-refs = "아키택트"
-preds = "아키택쳐"
-#prints: [cer, substitutions, deletions, insertions] -> [CER = 1 / 4, S = 1, D = 0, I = 0] 
+```bash
+pip install nlptutti
 ```
 
+#### CER
 
 ```python
-import asr_metrics as metrics
+import nlptutti as metrics
+
+refs = "아키택트"
+preds = "아키택쳐"
+# prints: [cer, substitutions, deletions, insertions] -> [CER = 1 / 4, S = 1, D = 0, I = 0] 
+```
+
+```python
+import nlptutti as metrics
+
 refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
 preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
 [cer, substitutions, deletions, insertions] = metrics.get_cer(refs, preds)
@@ -55,8 +60,10 @@ preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와
 ```
 
 #### WER
+
 ```python
-import asr_metrics as metrics
+import nlptutti as metrics
+
 refs = "대한민국은 주권 국가 입니다."
 preds = "대한민국은 주권국가 입니다."
 [wer, substitutions, deletions, insertions] = metrics.get_wer(refs, preds)

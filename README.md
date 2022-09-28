@@ -1,6 +1,6 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/hyeonsangjeon/youtube-dl-nas/master/LICENSE)
 
-# 한국어 자동 음성 인식 평가를 위한 유사도 측정 함수
+# 한국어 자동 음성 인식 평가를 위한 유사도 측정 함수 패키지
 
 이 저장소에는 Amazon Transcribes와 같은 한글 문장 인식기의 출력 스크립트의 낱말 오류율(CER), 단어 오류율(WER)을 계산하는 간단한 Python 패키지가 포함되어있습니다. 
 STT(speech-to-text) API의 실제(Ground truth)문장과 가설(hypothesis or transcribe)문장 사이의 최소 편집거리를 계산합니다. 최소편집거리는 Dynamic Programing 기법 중 Levenshtein을 사용하여 계산됩니다. 

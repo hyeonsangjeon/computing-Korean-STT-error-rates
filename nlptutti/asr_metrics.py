@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Tuple, Union
 import sys
 import pandas as pd
 import jiwer
-
+import json
+from collections import OrderedDict
 # -*- coding: utf-8 -*-
 
 def levenshtein(u, v):
@@ -77,10 +78,10 @@ def _measure_cer(
 
 
     #print("reference : ",reference)
-    print("cer S : ", cer_s)
-    print("cer I : ", cer_i)
-    print("cer D : ", cer_d)
-    print("cer_n : ", cer_n)
+    # print("cer S : ", cer_s)
+    # print("cer I : ", cer_i)
+    # print("cer D : ", cer_d)
+    # print("cer_n : ", cer_n)
 
 
     if cer_n > 0:
@@ -114,7 +115,7 @@ def _measure_wer(
     ref.append(reference)
     hyp.append(transcription)
 
-    print("? : ", ref)
+    #print("? : ", ref)
 
     wer_s, wer_i, wer_d, wer_n = 0, 0, 0, 0
     sen_err = 0
@@ -134,10 +135,10 @@ def _measure_wer(
 
     #print("reference : ",reference)
     #print("reference cnt : ", reference.split())
-    print("wer S : ", wer_s)
-    print("wer I : ", wer_i)
-    print("wer D : ", wer_d)
-    print("wer_n : ", wer_n)
+    # print("wer S : ", wer_s)
+    # print("wer I : ", wer_i)
+    # print("wer D : ", wer_d)
+    # print("wer_n : ", wer_n)
 
 
     if wer_n > 0:
@@ -171,8 +172,7 @@ def _measure_er(
     return TBD1, TBD2
 
 
-def get_cer(reference, transcription, rm_punctuation = True
-            ) -> Tuple[int, int, int, int]:
+def get_cer(reference, transcription, rm_punctuation = True) -> json:
 
     # 문자 오류율(CER)은 자동 음성 인식 시스템의 성능에 대한 일반적인 메트릭입니다.
     # CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다.
@@ -209,11 +209,15 @@ def get_cer(reference, transcription, rm_punctuation = True
     total = substitutions + deletions + hits + insertions
 
     cer = incorrect / total
-    return cer, substitutions, deletions, insertions
+
+    result = OrderedDict()
+    result = {'cer' : cer, 'substitutions' : substitutions, 'deletions' : deletions, 'insertions': insertions }
+
+    #return cer, substitutions, deletions, insertions
+    return result
 
 
-def get_wer(reference, transcription, rm_punctuation = True
-            )-> Tuple[int, int, int, int]:
+def get_wer(reference, transcription, rm_punctuation = True)-> json:
 
     # WER = (S + D + I) / N = (S + D + I) / (S + D + C)
     # S is the number of the substitutions,
@@ -237,4 +241,7 @@ def get_wer(reference, transcription, rm_punctuation = True
     total = substitutions + deletions + hits + insertions
 
     wer = incorrect / total
-    return wer, substitutions, deletions, insertions
+    result = OrderedDict()
+    result = {'wer': wer, 'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions}
+
+    return result

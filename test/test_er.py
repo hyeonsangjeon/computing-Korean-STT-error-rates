@@ -11,7 +11,7 @@ class TestER(unittest.TestCase):
 
         result_metric =  nt.get_cer(refs, preds)
 
-        char_error_rate = result_metric[0]
+        char_error_rate = result_metric['cer']
         expected_error_rate =  0.25
         self.assertTrue(abs(char_error_rate - expected_error_rate) < 1e-6)
 
@@ -22,23 +22,24 @@ class TestER(unittest.TestCase):
         preds = "My hovercraft is full of eels"
         # S = 0, D = 1, I = 0, N = 25, CER = 1 / 25
 
-        [cer, substitutions, deletions, insertions] =  nt.get_cer(refs, preds)
-
+        result_metric=  nt.get_cer(refs, preds)
+        cer = result_metric['cer']
+        deletions = result_metric['deletions']
 
         expected_deletion = 1
         expected_error_rate =  0.04
         self.assertTrue((abs(deletions - expected_deletion) == 0) and cer==expected_error_rate)
-        # self.assertTrue(self)
+
 
 
 
     def test_cer_normalized_case(self):
         refs = "STEAM"
         preds = "STREAM"
-        [cer, substitutions, deletions, insertions] = nt.get_cer(refs, preds)
+        cer = nt.get_cer(refs, preds)['cer']
         # S = 0, D = 0, I = 1, N=5, C = 5, CER = 1 / (5+1)
         expected_error_rate = 0.1666666666
-        print("cer : ", cer)
+        #print("cer : ", cer)
 
         self.assertTrue(abs(cer - expected_error_rate) < 1e-6)
 
@@ -46,10 +47,10 @@ class TestER(unittest.TestCase):
     def test_korean_cer_simple_sentence_case(self):
         refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다"
         preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다"
-        [cer, substitutions, deletions, insertions] = nt.get_cer(refs, preds)
+        result_metric = nt.get_cer(refs, preds)
         # S = 0, D = 0, I = 0, N = 34, CER = 0 / 34
         expected_error_rate =0
-        self.assertTrue(abs(cer - expected_error_rate) < 1e-6)
+        self.assertTrue(abs(result_metric['cer'] - expected_error_rate) < 1e-6)
 
 
 
@@ -57,17 +58,18 @@ class TestER(unittest.TestCase):
         refs = "대한민국은 주권 국가 입니다."
         preds = "대한민국은 주권국가 입니다."
         # S = 1, D = 1, I = 0, N = 4, WER = 2 / 4
-        [wer, substitutions, deletions, insertions] = nt.get_wer(refs, preds)
+        result_metric = nt.get_wer(refs, preds)
+        wer = result_metric['wer']
         expected_error_rate =0.5
         self.assertTrue(abs(wer - expected_error_rate) < 1e-6)
 
     def test_remove_punctuation_case(self):
         refs = "또 다른 방법으로, 데이터를 읽는 작업과 쓰는 작업을 분리합니다!"
         preds = "또! 다른 방법으로 데이터를 읽는 작업과 쓰는 작업을 분리합니다."
-        [wer, substitutions, deletions, insertions] = nt.get_wer(refs, preds, rm_punctuation=True)
+        result_metric = nt.get_wer(refs, preds, rm_punctuation=True)
         # S = 0, D = 0, I = 0, N = 9, CER = 0 / 9
         expected_error_rate = 0.0
-        self.assertTrue(abs(wer - expected_error_rate) < 1e-6)
+        self.assertTrue(abs(result_metric['wer'] - expected_error_rate) < 1e-6)
 
     # def test_function_case_of_list(self):
     #     refs = ["My", "hoverscraftis"]

@@ -13,9 +13,9 @@ class TestER(unittest.TestCase):
         result_transcribe = nt.get_cer(refs, preds_transcribe)
         result_clova = nt.get_cer(refs_cnt, preds_clova)
 
-        cer_vrew = result_vrew[0]
-        cer_transcribe = result_transcribe[0]
-        cer_clova  = result_clova[0]
+        cer_vrew = result_vrew['cer']
+        cer_transcribe = result_transcribe['cer']
+        cer_clova  = result_clova['cer']
 
 
         print("CER VREW : ", cer_vrew)
@@ -37,9 +37,9 @@ class TestER(unittest.TestCase):
         result_transcribe = nt.get_cer(refs, preds_transcribe)
         result_clova = nt.get_cer(refs_c, preds_clova)
 
-        cer_vrew = result_vrew[0]
-        cer_transcribe = result_transcribe[0]
-        cer_clova = result_clova[0]
+        cer_vrew = result_vrew['cer']
+        cer_transcribe = result_transcribe['cer']
+        cer_clova = result_clova['cer']
 
         print("test_cer_case_korean2 VREW : ", cer_vrew)
         print("test_cer_case_korean2 transcribe : ", cer_transcribe)
@@ -59,9 +59,9 @@ class TestER(unittest.TestCase):
         result_transcribe = nt.get_cer(refs, preds_transcribe)
         result_clova = nt.get_cer(refs_c, preds_clova)
 
-        cer_vrew = result_vrew[0]
-        cer_transcribe = result_transcribe[0]
-        cer_clova = result_clova[0]
+        cer_vrew = result_vrew['cer']
+        cer_transcribe = result_transcribe['cer']
+        cer_clova = result_clova['cer']
 
         print("test_cer_case_korean3 VREW : ", cer_vrew)
         print("test_cer_case_korean3 transcribe : ", cer_transcribe)

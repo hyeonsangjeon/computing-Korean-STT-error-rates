@@ -1,5 +1,5 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/hyeonsangjeon/youtube-dl-nas/master/LICENSE)
-
+[![Downloads](https://static.pepy.tech/personalized-badge/nlptutti?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Package%20Downloads)](https://pepy.tech/project/nlptutti)
 # 한국어 자동 음성 인식 평가를 위한 유사도 측정 함수 패키지
 
 이 저장소에는 Amazon Transcribes와 같은 한글 문장 인식기의 출력 스크립트의 낱말 오류율(CER), 단어 오류율(WER)을 계산하는 간단한 Python 패키지가 포함되어있습니다. 

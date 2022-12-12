@@ -20,7 +20,7 @@ STT(speech-to-text) API의 실제(Ground truth)문장과 가설(hypothesis or tr
 
 CER(WER) = (S + D + I) / N = (S + D + I) / (S + D + I + C)
 
-- S : 대체 오휴, 철자가 틀린 외자(uniliteral)/단어(word) 횟수 
+- S : 대체 오류, 철자가 틀린 외자(uniliteral)/단어(word) 횟수 
 - D : 삭제 오류, 외자/단어의 누락 횟수
 - I : 삽입 오류, 잘못된 외자/단어가 포함된 횟수  
 - C : Ground truth와 hypothesis 간 올바른 외자/단어(기호)의 합계, (N - D - S)

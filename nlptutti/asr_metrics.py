@@ -57,8 +57,6 @@ def _measure_cer(
     ref.append(reference)
     hyp.append(transcription)
 
-    #print("? : ", ref)
-
     cer_s, cer_i, cer_d, cer_n = 0, 0, 0, 0
     sen_err = 0
 
@@ -74,22 +72,12 @@ def _measure_cer(
         if s + i + d > 0:
             sen_err += 1
 
-
-
-
-    #print("reference : ",reference)
-    # print("cer S : ", cer_s)
-    # print("cer I : ", cer_i)
-    # print("cer D : ", cer_d)
-    # print("cer_n : ", cer_n)
-
-
-    if cer_n > 0:
-        #print('CER: %g%%, SER: %g%%' % (
-        #    (100.0 * (cer_s + cer_i + cer_d)) / cer_n,
-        #    (100.0 * sen_err) / len(ref)))
-        print('CER: %g%%' % (
-            (100.0 * (cer_s + cer_i + cer_d)) / cer_n))
+    # if cer_n > 0:
+    #     #print('CER: %g%%, SER: %g%%' % (
+    #     #    (100.0 * (cer_s + cer_i + cer_d)) / cer_n,
+    #     #    (100.0 * sen_err) / len(ref)))
+    #     print('CER: %g%%' % (
+    #         (100.0 * (cer_s + cer_i + cer_d)) / cer_n))
 
     substitutions = cer_s
     deletions = cer_d
@@ -115,8 +103,6 @@ def _measure_wer(
     ref.append(reference)
     hyp.append(transcription)
 
-    #print("? : ", ref)
-
     wer_s, wer_i, wer_d, wer_n = 0, 0, 0, 0
     sen_err = 0
 
@@ -132,21 +118,12 @@ def _measure_wer(
             sen_err += 1
 
 
-
-    #print("reference : ",reference)
-    #print("reference cnt : ", reference.split())
-    # print("wer S : ", wer_s)
-    # print("wer I : ", wer_i)
-    # print("wer D : ", wer_d)
-    # print("wer_n : ", wer_n)
-
-
-    if wer_n > 0:
-        #print('WER: %g%%, SER: %g%%' % (
-        #    (100.0 * (wer_s + wer_i + wer_d)) / wer_n,
-        #    (100.0 * sen_err) / len(ref)))
-        print('WER: %g%%' % (
-            (100.0 * (wer_s + wer_i + wer_d)) / wer_n))
+    # if wer_n > 0:
+    #     #print('WER: %g%%, SER: %g%%' % (
+    #     #    (100.0 * (wer_s + wer_i + wer_d)) / wer_n,
+    #     #    (100.0 * sen_err) / len(ref)))
+    #     print('WER: %g%%' % (
+    #         (100.0 * (wer_s + wer_i + wer_d)) / wer_n))
 
     substitutions = wer_s
     deletions = wer_d
@@ -197,14 +174,11 @@ def get_cer(reference, transcription, rm_punctuation = True) -> json:
         refs = reference
         trans = transcription
 
-    #print("refs : ", refs)
-
     [hits ,cer_s, cer_d, cer_i] = _measure_cer(refs, trans)
 
     substitutions = cer_s
     deletions = cer_d
     insertions = cer_i
-    #print("tmp hits : ", hits)
     incorrect = substitutions + deletions + insertions
     total = substitutions + deletions + hits + insertions
 
@@ -212,8 +186,8 @@ def get_cer(reference, transcription, rm_punctuation = True) -> json:
 
     result = OrderedDict()
     result = {'cer' : cer, 'substitutions' : substitutions, 'deletions' : deletions, 'insertions': insertions }
+    #print('cer : ',100.0*cer,'%') #normalized
 
-    #return cer, substitutions, deletions, insertions
     return result
 
 
@@ -236,7 +210,7 @@ def get_wer(reference, transcription, rm_punctuation = True)-> json:
     substitutions = wer_s
     deletions = wer_d
     insertions = wer_i
-    #print("tmp hits : ", hits)
+
     incorrect = substitutions + deletions + insertions
     total = substitutions + deletions + hits + insertions
 

@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="nlptutti",
-    version="0.0.0.7",
+    version="0.0.0.8",
     author="hyeonsangjeon",
     author_email="wingnut0310@gmail.com",
     description="nlp measurement package",

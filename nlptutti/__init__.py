@@ -14,6 +14,7 @@ for dependency in hard_dependencies:
 from nlptutti.asr_metrics import (
     get_cer,
     get_wer,
+    get_crr,
 )
 
 #__all__ = ["get_cer",

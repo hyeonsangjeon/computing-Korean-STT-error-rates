@@ -1,6 +1,6 @@
 import unittest
 import nlptutti as nt
-
+from nlptutti.asr_metrics import get_crr
 
 class TestER(unittest.TestCase):
 
@@ -71,12 +71,10 @@ class TestER(unittest.TestCase):
         expected_error_rate = 0.0
         self.assertTrue(abs(result_metric['wer'] - expected_error_rate) < 1e-6)
 
-    # def test_function_case_of_list(self):
-    #     refs = ["My", "hoverscraftis"]
-    #     preds = ["My", "hove"]
-    #
-    #     for p, r in zip(preds,refs):
-    #         print("p : ",p)
-    #         print("r : ", r)
-    #
-    #     self.assertTrue(self)
+    def test_crr_case(self):
+        refs = "또 다른 방법으로, 데이터를 읽는 작업과 쓰는 작업을 분리합니다!"
+        preds = "또! 다른 방법으 데이터를 읽는 작업과 쓰는 작업을 분리합니다."
+        result_metric = get_crr(refs, preds, rm_punctuation=True)
+        # S = 0, D = 0, I = 0, N = 9, CRR = 1 - 0 / 9
+        expected_error_rate = 0.96
+        self.assertTrue(abs(result_metric['crr'] - expected_error_rate) < 1e-6)

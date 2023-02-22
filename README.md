@@ -79,6 +79,22 @@ insertions = result['insertions']
 # prints: [wer, substitutions, deletions, insertions] -> [WER =  2 / 4, S = 1, D = 1, I = 0]
 ```
 
+#### CRR
+
+```python
+import nlptutti as metrics
+
+refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
+preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
+result = metrics.get_cer(refs, preds)
+crr = result['crr']
+substitutions = result['substitutions']
+deletions = result['deletions']
+insertions = result['insertions']
+# prints: [crr, substitutions, deletions, insertions] -> [CRR = 1 - (0 / 34), S = 0, D = 0, I = 0]
+```
+
+
 ### 전처리 예 
 
 #### 띄어쓰기 

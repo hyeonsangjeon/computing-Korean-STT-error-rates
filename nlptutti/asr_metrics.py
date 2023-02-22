@@ -6,6 +6,8 @@ import pandas as pd
 import jiwer
 import json
 from collections import OrderedDict
+
+
 # -*- coding: utf-8 -*-
 
 def levenshtein(u, v):
@@ -34,14 +36,13 @@ def levenshtein(u, v):
     return curr[len(v)], curr_ops[len(v)]
 
 
-
 def get_unicode_code(text):
-    result = ''.join( char if ord(char) < 128 else '\\u'+format(ord(char), 'x') for char in text )
+    result = ''.join(char if ord(char) < 128 else '\\u' + format(ord(char), 'x') for char in text)
     return result
 
 
 def _measure_cer(
-        reference : str, transcription : str
+        reference: str, transcription: str
 ) -> Tuple[int, int, int, int]:
     """
     소스 단어를 대상 단아로 변환하는 데 필요한 편집 작업(삭제, 삽입, 바꾸기)의 수를 확인합니다.
@@ -72,22 +73,16 @@ def _measure_cer(
         if s + i + d > 0:
             sen_err += 1
 
-    # if cer_n > 0:
-    #     #print('CER: %g%%, SER: %g%%' % (
-    #     #    (100.0 * (cer_s + cer_i + cer_d)) / cer_n,
-    #     #    (100.0 * sen_err) / len(ref)))
-    #     print('CER: %g%%' % (
-    #         (100.0 * (cer_s + cer_i + cer_d)) / cer_n))
-
     substitutions = cer_s
     deletions = cer_d
     insertions = cer_i
-    hits = len(reference) - (substitutions + deletions) #correct characters
+    hits = len(reference) - (substitutions + deletions)  # correct characters
 
     return hits, substitutions, deletions, insertions
 
+
 def _measure_wer(
-        reference : str, transcription : str
+        reference: str, transcription: str
 ) -> Tuple[int, int, int, int]:
     """
     소스 문자열을 대상 문자열로 변환하는 데 필요한 편집 작업(삭제, 삽입, 바꾸기)의 수를 확인합니다.
@@ -117,40 +112,29 @@ def _measure_wer(
         if s + i + d > 0:
             sen_err += 1
 
-
-    # if wer_n > 0:
-    #     #print('WER: %g%%, SER: %g%%' % (
-    #     #    (100.0 * (wer_s + wer_i + wer_d)) / wer_n,
-    #     #    (100.0 * sen_err) / len(ref)))
-    #     print('WER: %g%%' % (
-    #         (100.0 * (wer_s + wer_i + wer_d)) / wer_n))
-
     substitutions = wer_s
     deletions = wer_d
     insertions = wer_i
-    hits = len(reference.split()) - (substitutions + deletions) #correct words between refs and trans
+    hits = len(reference.split()) - (substitutions + deletions)  # correct words between refs and trans
 
     return hits, substitutions, deletions, insertions
 
 
-
-
 def _measure_er(
-        reference : str, transcription : str
+        reference: str, transcription: str
 ) -> Tuple[int, int]:
     """
-    TBD
-    :param transcription: 대상 문자열로 변환할 소스 문자열
-    :param reference:
-    :return: a tuple of #
+    완벽하게 변역한 문장여부를 판단합니다.
+    :param transcription: 대상 단어로 변환할 소스 문자열
+    :param reference: 소스 단어
+    :return: Boolean
     """
-    TBD1 =""
-    TBD2 =""
+    TBD1 = ""
+    TBD2 = ""
     return TBD1, TBD2
 
 
-def get_cer(reference, transcription, rm_punctuation = True) -> json:
-
+def get_cer(reference, transcription, rm_punctuation=True) -> json:
     # 문자 오류율(CER)은 자동 음성 인식 시스템의 성능에 대한 일반적인 메트릭입니다.
     # CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다.
     # 이 코드에서는 문제는 사람들이 띄어쓰기를 지키지 않고 작성한 텍스트를 컴퓨터가 정확하게 인식하는 것이 매우 어렵기 때문에 인식에러에서 생략합니다.
@@ -174,7 +158,7 @@ def get_cer(reference, transcription, rm_punctuation = True) -> json:
         refs = reference
         trans = transcription
 
-    [hits ,cer_s, cer_d, cer_i] = _measure_cer(refs, trans)
+    [hits, cer_s, cer_d, cer_i] = _measure_cer(refs, trans)
 
     substitutions = cer_s
     deletions = cer_d
@@ -185,14 +169,13 @@ def get_cer(reference, transcription, rm_punctuation = True) -> json:
     cer = incorrect / total
 
     result = OrderedDict()
-    result = {'cer' : cer, 'substitutions' : substitutions, 'deletions' : deletions, 'insertions': insertions }
-    #print('cer : ',100.0*cer,'%') #normalized
+    result = {'cer': cer, 'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions}
+    # print('cer : ',100.0*cer,'%') #normalized
 
     return result
 
 
-def get_wer(reference, transcription, rm_punctuation = True)-> json:
-
+def get_wer(reference, transcription, rm_punctuation=True) -> json:
     # WER = (S + D + I) / N = (S + D + I) / (S + D + C)
     # S is the number of the substitutions,
     # D is the number of the deletions,
@@ -218,4 +201,36 @@ def get_wer(reference, transcription, rm_punctuation = True)-> json:
     result = OrderedDict()
     result = {'wer': wer, 'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions}
 
+    return result
+
+
+def get_crr(reference, transcription, rm_punctuation=True) -> json:
+    """
+    1 - CER 으로, Character의 error율이 아닌 정답률을 계산
+    :param transcription: 대상 단어로 변환할 소스 문자열
+    :param reference: 소스 단어
+    :return: Boolean
+    """
+    refs = jiwer.RemoveWhiteSpace(replace_by_space=False)(reference)
+    trans = jiwer.RemoveWhiteSpace(replace_by_space=False)(transcription)
+
+    if rm_punctuation == True:
+        refs = jiwer.RemovePunctuation()(refs)
+        trans = jiwer.RemovePunctuation()(trans)
+    else:
+        refs = reference
+        trans = transcription
+
+    [hits, cer_s, cer_d, cer_i] = _measure_cer(refs, trans)
+
+    substitutions = cer_s
+    deletions = cer_d
+    insertions = cer_i
+    incorrect = substitutions + deletions + insertions
+    total = substitutions + deletions + hits + insertions
+
+    crr = round(1 - (incorrect / total), 2)
+
+    result = OrderedDict()
+    result = {'crr': crr, 'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions}
     return result

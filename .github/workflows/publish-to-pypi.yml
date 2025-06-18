@@ -27,7 +27,12 @@ jobs:
         run: python -m build
 
       - name: Verify project configuration
-        run: python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb')))"
+        run: |
+          echo "==== pyproject.toml 내용 ===="
+          cat pyproject.toml
+          
+          echo "\n==== 프로젝트 구조 확인 ===="
+          find . -type f -name "*.py" | sort
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.14

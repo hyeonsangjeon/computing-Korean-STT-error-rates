@@ -17,8 +17,9 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install build tools
-        run: python -m pip install --upgrade pip build
+      - name: Install build tools & check
+        run: |
+          python -m pip install --upgrade pip build wheel
 
       - name: Check requirements.txt exists
         run: |

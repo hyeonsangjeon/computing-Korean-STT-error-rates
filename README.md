@@ -11,11 +11,11 @@ STT(speech-to-text) API의 실제(Ground truth)문장과 가설(hypothesis or tr
 
 ---
 
-<img src="https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/pic/ER_CASE.png" width="90%">
+<img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/ER_CASE.png" width="90%">
 
 ---
 
-<img src="https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/pic/FORMULA_CASE.png" width="70%">
+<img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" width="70%">
 
 ---
 

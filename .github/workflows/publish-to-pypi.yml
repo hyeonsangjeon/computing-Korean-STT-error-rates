@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install build tools
-        run: python -m pip install --upgrade pip build wheel twine
+        run: python -m pip install --upgrade pip build wheel twine pkginfo
 
       - name: Clean old builds
         run: rm -rf dist build *.egg-info

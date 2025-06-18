@@ -127,7 +127,7 @@ result = metrics.get_wer(refs, preds, rm_punctuation=True)
 # prints: wer -> 0.0
 ```
 
-#### 한국어 고유명사 인식평가 (make_keyword_pattern)
+### 한국어 고유명사 인식평가 (make_keyword_pattern)
 
 `make_keyword_pattern` 함수는 한국어 자연어 처리(NLP)에서 매우 중요한 **형태소의 변이**와 **띄어쓰기 오류**를 robust하게 다루기 위해 설계된 함수입니다.  
 이 함수는 입력한 키워드가 실제 문장 내에서 **조사(예: "의", "에서", "까지" 등)**, **어미(예: "다", "했다" 등)**와 결합하거나, **키워드 내부에 불규칙한 띄어쓰기가 포함**되어 나타나는 다양한 형태 모두를 정규표현식 패턴으로 포괄적으로 인식할 수 있게 해줍니다.
@@ -169,7 +169,7 @@ for sentence in test_sentences:
 - 형태소 분석 없이도 정규표현식만으로 한국어의 대표적 변이현상(조사·어미 결합, 띄어쓰기 오류 등)에 강건  
 - 음성인식(STT) 결과물, 문서 검색, 정보추출 등에서 **키워드 기반 평가 및 분석의 정밀도**를 크게 향상  
 
-#### 고유명사 인식 정확도 평가 사용 예시 (calculate_keyword_error_rate_with_pattern)
+### 고유명사 인식 정확도 평가 사용 예시 (calculate_keyword_error_rate_with_pattern)
 
 `calculate_keyword_error_rate_with_pattern` 함수는 여러 키워드에 대해 STT 인식 결과와 참조문장을 비교하여,  
 각 키워드별 인식 정확도 및 전체 요약 통계를 제공합니다.  

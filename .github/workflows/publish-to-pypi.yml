@@ -18,23 +18,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip build wheel
+        run: python -m pip install --upgrade pip build wheel
 
-      - name: Check requirements.txt exists
-        run: |
-          echo "Current directory: $(pwd)"
-          ls -l
-          if [ ! -f requirements.txt ]; then
-            echo "requirements.txt NOT FOUND!"
-            exit 1
-          else
-            echo "requirements.txt exists."
-          fi
+      - name: Clean old builds
+        run: rm -rf dist build *.egg-info
 
       - name: Build package
         run: python -m build
-        working-directory: .
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.14

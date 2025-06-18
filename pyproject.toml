@@ -16,3 +16,7 @@ dependencies = [
     "jiwer"
 ]
 urls = { Homepage = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nlptutti*"]

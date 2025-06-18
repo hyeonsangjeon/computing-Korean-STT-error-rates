@@ -22,7 +22,10 @@ jobs:
 
       - name: Clean old builds
         run: rm -rf dist build *.egg-info
-
+      
+      - name: Remove setup.py to avoid conflicts
+        run: rm setup.py
+      
       - name: Build package
         run: python -m build
 

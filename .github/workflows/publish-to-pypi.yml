@@ -26,6 +26,9 @@ jobs:
       - name: Build package
         run: python -m build
 
+      - name: Verify project configuration
+        run: python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb')))"
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.14
         with:

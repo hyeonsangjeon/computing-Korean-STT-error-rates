@@ -2,6 +2,22 @@
 
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
+
+## [0.0.0.10] - 2025-06-18
+
+---
+
+### Fixed
+- README.md의 이미지 경로 수정:
+  - PyPI에서 이미지가 표시되지 않는 문제 해결
+  - GitHub 상대 경로 (`blob/main`) → GitHub raw URL (`raw.githubusercontent.com`) 변경
+  - ER_CASE.png, FORMULA_CASE.png 이미지가 PyPI 패키지 설명 페이지에서 정상 표시되도록 개선
+
+### Changed
+- PyPI 패키지 메타데이터 개선:
+  - 이메일 주소 설정 최적화
+  - 의존성 정보 정리
+
 ---
 
 ## [0.0.0.9] - 2025-06-18

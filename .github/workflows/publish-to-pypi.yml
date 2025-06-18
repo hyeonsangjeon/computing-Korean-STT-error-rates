@@ -20,6 +20,17 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade pip build
 
+      - name: Check requirements.txt exists
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -l
+          if [ ! -f requirements.txt ]; then
+            echo "requirements.txt NOT FOUND!"
+            exit 1
+          else
+            echo "requirements.txt exists."
+          fi
+
       - name: Build package
         run: python -m build
         working-directory: .

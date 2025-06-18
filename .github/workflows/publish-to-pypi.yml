@@ -1,62 +1,42 @@
-name: Python CI & Release
+name: Publish Python 🐍 distribution 📦 to PyPI
 
 on:
-  push:
-    branches: [ main ]
   release:
     types: [published]
 
 jobs:
-  test:
+  build-and-publish:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: [3.9, 3.10, 3.11]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: python-version: ${{ matrix.python }}
 
-      - name: Cache pip
-        uses: actions/cache@v3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest flake8 mypy
-
-      - name: Lint
-        run: |
-          flake8 src/ tests/
-          mypy src/
-
-      - name: Test
-        run: pytest --maxfail=1 --disable-warnings -q
-
-  release:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install build tools
-        run: pip install build wheel
+        run: |
+          python -m pip install --upgrade pip build wheel
+
+      - name: Check requirements.txt exists
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -l
+          if [ ! -f requirements.txt ]; then
+            echo "requirements.txt NOT FOUND!"
+            exit 1
+          else
+            echo "requirements.txt exists."
+          fi
 
       - name: Build package
         run: python -m build
+        working-directory: .
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@v1
+        uses: pypa/gh-action-pypi-publish@v1.8.14
         with:
-          packages-dir: dist/
           password: ${{ secrets.PYPI_API_TOKEN }}

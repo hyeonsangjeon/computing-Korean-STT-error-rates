@@ -13,7 +13,7 @@ venv/
 **/.idea
 *.iml
 .pytest
-
+temp_wheel/
 build.sh
 deploy.sh
 

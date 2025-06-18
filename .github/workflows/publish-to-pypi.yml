@@ -23,21 +23,38 @@ jobs:
       - name: Clean old builds
         run: rm -rf dist build *.egg-info
       
-      - name: Remove setup.py to avoid conflicts
-        run: rm setup.py
+      - name: Remove setup.py if exists (to avoid conflicts with pyproject.toml)
+        run: |
+          if [ -f setup.py ]; then
+            rm setup.py
+            echo "Removed setup.py to avoid conflicts"
+          fi
       
+      - name: Verify pyproject.toml exists
+        run: |
+          if [ ! -f pyproject.toml ]; then
+            echo "Error: pyproject.toml not found!"
+            exit 1
+          fi
+          echo "pyproject.toml found"
+
       - name: Build package
         run: python -m build
 
-      - name: Verify project configuration
+      - name: Verify build output
         run: |
-          echo "==== pyproject.toml 내용 ===="
-          cat pyproject.toml
+          echo "==== 빌드된 파일들 ===="
+          ls -la dist/
           
-          echo "\n==== 프로젝트 구조 확인 ===="
-          find . -type f -name "*.py" | sort
+          echo "==== Wheel 파일 메타데이터 확인 ===="
+          python -m wheel unpack dist/*.whl --dest temp_wheel
+          find temp_wheel -name "METADATA" -exec cat {} \;
+      
+      - name: Check package with twine
+        run: python -m twine check dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.8.14
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          verbose: true

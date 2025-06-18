@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nlptutti"
+version = "0.0.0.9"
+description = "nlp measurement package"
+authors = [
+  { name="hyeonsangjeon", email="wingnut0310@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pandas",
+    "jiwer"
+]
+urls = { Homepage = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates" }

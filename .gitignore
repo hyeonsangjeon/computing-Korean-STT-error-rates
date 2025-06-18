@@ -7,10 +7,12 @@ javadocs/*
 logs/
 .idea
 __pycache__/
-
+tutti_*.egg-info/
+venv/
 # IntelliJ IDEA
 **/.idea
 *.iml
+.pytest
 
 build.sh
 deploy.sh

@@ -6,6 +6,7 @@ import pandas as pd
 import jiwer
 import json
 from collections import OrderedDict
+import re
 
 
 # -*- coding: utf-8 -*-
@@ -234,3 +235,107 @@ def get_crr(reference, transcription, rm_punctuation=True) -> json:
     result = OrderedDict()
     result = {'crr': crr, 'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions}
     return result
+
+
+COMPLEX_JOSA = [
+    # 단일 조사
+    "의", "에", "에서", "도", "만", "를", "을", "이", "가", "과", "와", "으로", "로", "부터",
+    "까지", "에게", "께", "한테", "밖에", "마저", "이나", "나", "며", "든지", "라도", "조차",
+    # 복합/결합 조사
+    "에서부터", "에게서", "으로부터", "까지도", "밖에도", "이라도", "이나마", "라도나", "와도", "도만", "까지도", "에도",
+    "이나마", "라도나", "조차도", "치고는"
+]
+COMPLEX_EOMI = [
+    "다", "니다", "합니다", "했다", "하고", "하는데", "했었다", "한다면", "한다니까", "하니", "하더니", "하여도", "하더라도", "했었지", "하려면"
+]
+
+def make_keyword_pattern(keyword, josa_list, eomi_list=None):
+    """
+    주어진 키워드와 조사, 어미 리스트를 기반으로 정규 표현식 패턴을 생성합니다.
+    Args:
+        keyword (str): 키워드 문자열
+        josa_list (list of str): 조사 리스트
+        eomi_list (list of str, optional): 어미 리스트
+    Returns:
+        re.Pattern: 생성된 정규 표현식 패턴
+    1. 키워드의 각 글자 사이에 optional space (\s*)를 허용합니다.
+    2. 조사 리스트를 |로 연결하여 조사 패턴을 만듭니다.
+    3. 어미 리스트가 있을 경우, 어미 패턴도 생성하여 조사 패턴과 함께 붙입니다.
+    4. 최종적으로 키워드 + 조사/어미 패턴을 정규 표현식으로 컴파일합니다.
+    5. 예시: "삼성전자" 키워드와 ["의", "에서", "와"] 조사 리스트, ["다", "합니다"] 어미 리스트가 주어질 경우,
+       정규 표현식은 다음과 같이 생성됩니다:
+       r"\s*삼\s*성\s*전\s*자(\s*(의|에서|와)(다|합니다)?)?"
+       이 패턴은 "삼성전자", "삼성전자에서", "삼성전자와 다" 등 다양한 형태의 키워드 매칭을 허용합니다.
+    """
+    # 키워드의 각 글자 사이에 optional space (\s*) 허용
+    keyword_pattern = r'\s*'.join(list(keyword))
+    # 조사 패턴 (|로 연결)
+    josa_pattern = '|'.join(sorted(josa_list, key=lambda x: -len(x)))
+    # 어미 패턴도 있을 경우 같이 붙임
+    if eomi_list:
+        eomi_pattern = '|'.join(sorted(eomi_list, key=lambda x: -len(x)))
+        # 조사, 어미 중 하나 이상 붙을 수 있게
+        full_pattern = rf"{keyword_pattern}({josa_pattern}|{eomi_pattern})?"
+    else:
+        full_pattern = rf"{keyword_pattern}({josa_pattern})?"
+    return re.compile(full_pattern)
+
+
+
+def calculate_keyword_error_rate_with_pattern(reference_sentences, hypothesis_sentences, keywords, josa_list, eomi_list=None):
+    """
+    각 키워드별로 등장한 횟수와 오류 횟수를 집계하고, 정확도와 에러율을 계산합니다.
+    전체 키워드 통계도 함께 제공합니다.
+
+    Args:
+        reference_sentences (list of str): 정답 문장 리스트
+        hypothesis_sentences (list of str): STT 결과 문장 리스트
+        keywords (list of str): 추적할 키워드 리스트
+        josa_list (list of str): 조사 리스트
+        eomi_list (list of str, optional): 어미 리스트
+
+    Returns:
+        dict: {
+            "keywords": {키워드: {"total": 등장횟수, "correct": 정확개수, "errors": 오류횟수, "accuracy": 정확도율, "error_rate": 에러율}},
+            "summary": {"total_keywords": 전체등장횟수, "correct_keywords": 전체정확횟수, "incorrect_keywords": 전체오류횟수, "keyword_error_rate": 전체에러율}
+        } 형태의 딕셔너리
+    """
+    result = {kw: {"total": 0, "correct": 0, "errors": 0, "accuracy": 0.0, "error_rate": 0.0} for kw in keywords}
+    patterns = {kw: make_keyword_pattern(kw, josa_list, eomi_list) for kw in keywords}
+
+    for ref, hyp in zip(reference_sentences, hypothesis_sentences):
+        for kw, pattern in patterns.items():
+            if pattern.search(ref):
+                result[kw]["total"] += 1
+                if pattern.search(hyp):
+                    result[kw]["correct"] += 1
+                else:
+                    result[kw]["errors"] += 1
+    
+    # 개별 키워드 정확도와 에러율 계산
+    for kw in keywords:
+        if result[kw]["total"] > 0:
+            result[kw]["accuracy"] = round(result[kw]["correct"] / result[kw]["total"], 4)
+            result[kw]["error_rate"] = round(result[kw]["errors"] / result[kw]["total"], 4)
+        else:
+            result[kw]["accuracy"] = 0.0
+            result[kw]["error_rate"] = 0.0
+    
+    # 전체 통계 계산
+    total_keywords = sum(kw_stats["total"] for kw_stats in result.values())
+    correct_keywords = sum(kw_stats["correct"] for kw_stats in result.values())
+    incorrect_keywords = sum(kw_stats["errors"] for kw_stats in result.values())
+    keyword_error_rate = round(incorrect_keywords / total_keywords, 4) if total_keywords > 0 else 0.0
+    
+    # 결과 구조화
+    final_result = {
+        "keywords": result,
+        "summary": {
+            "total_keywords": total_keywords,
+            "correct_keywords": correct_keywords,
+            "incorrect_keywords": incorrect_keywords,
+            "keyword_error_rate": keyword_error_rate
+        }
+    }
+    
+    return final_result

@@ -15,6 +15,11 @@ from nlptutti.asr_metrics import (
     get_cer,
     get_wer,
     get_crr,
+    make_keyword_pattern,
+    calculate_keyword_error_rate_with_pattern,
+    COMPLEX_JOSA,
+    COMPLEX_EOMI,
+        
 )
 
 #__all__ = ["get_cer",

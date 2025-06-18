@@ -38,6 +38,15 @@ jobs:
           fi
           echo "pyproject.toml found"
 
+      - name: Debug package structure and setup
+        run: |
+          echo "==== 패키지 구조 확인 ===="
+          find . -name "__init__.py"
+          echo "==== Python 파일 시작 부분 확인 ===="
+          find . -name "*.py" | xargs head -n 5
+          echo "==== Python 경로 확인 ===="
+          python -c "import sys; print(sys.path)"
+      
       - name: Build package
         run: python -m build
 

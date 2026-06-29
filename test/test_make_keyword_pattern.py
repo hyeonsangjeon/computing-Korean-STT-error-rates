@@ -1,5 +1,4 @@
 import unittest
-import re
 import sys
 import os
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
@@ -11,7 +10,7 @@ class TestMakeKeywordPattern(unittest.TestCase):
 
     def test_keyword_error_rate_check(self):
         keyword = "삼성전자"
-        pattern = make_keyword_pattern(keyword, COMPLEX_JOSA, ["다", "합니다", "합니다만", "했었다", "한다면", "한다니까", "하고", "하는데", "했다", "했었지", "하려면"])
+        pattern = make_keyword_pattern(keyword, COMPLEX_JOSA, ["다", "합니다", "합니다만", "했었다", "한다", "한다면", "한다니까", "하고", "하는데", "했다", "했었지", "하려면"])
         test_cases = [
             "삼성전자",          # O
             "삼성전자의",        # O
@@ -43,16 +42,31 @@ class TestMakeKeywordPattern(unittest.TestCase):
         self.assertEqual(bool(pattern.search("삼성전자에서")), True)
         self.assertEqual(bool(pattern.search("삼성전자와도")), True)
         self.assertEqual(bool(pattern.search("애플은")), False)
+
+    def test_keyword_pattern_escapes_regex_metacharacters(self):
+        pattern = make_keyword_pattern("C++", ["는", "은"], ["입니다"])
+
+        self.assertEqual(bool(pattern.search("C++는 빠릅니다")), True)
+        self.assertEqual(bool(pattern.search("C++입니다")), True)
+        self.assertEqual(bool(pattern.search("C+는 다른 키워드입니다")), False)
+
+    def test_keyword_pattern_does_not_match_inside_longer_token(self):
+        pattern = make_keyword_pattern("삼성전자", COMPLEX_JOSA, ["다", "합니다"])
+
+        self.assertEqual(bool(pattern.search("삼성전자의 실적")), True)
+        self.assertEqual(bool(pattern.search("삼성전자 합니다")), True)
+        self.assertEqual(bool(pattern.search("비삼성전자제품")), False)
+        self.assertEqual(bool(pattern.search("삼성전자제품")), False)
         
     def test_calculate_keyword_error_rate_with_pattern(self):
         # 복잡한 조사, 어미 리스트 예시
         COSTOM_COMPLEX_JOSA = [
-            "의", "에", "에서", "도", "만", "를", "을", "이", "가", "과", "와", "으로", "로", "부터",
+            "의", "에", "에서", "도", "만", "를", "을", "은", "는", "이", "가", "과", "와", "으로", "로", "부터",
             "까지", "에게", "께", "한테", "밖에", "마저", "이나", "나", "며", "든지", "라도", "조차",
             "에서부터", "에게서", "으로부터", "까지도", "밖에도", "이라도", "이나마", "라도나", "와도", "도만", "에도", "조차도", "치고는"
         ]
         CUSTOM_COMPLEX_EOMI = [
-            "다", "니다", "합니다", "했다", "하고", "하는데", "했었다", "한다면", "한다니까", "하니", "하더니", "하여도", "하더라도", "했었지", "하려면"
+            "다", "니다", "합니다", "했다", "한다", "하고", "하는데", "했었다", "한다면", "한다니까", "하니", "하더니", "하여도", "하더라도", "했었지", "하려면"
         ]
         
         reference_sentences = [
@@ -110,6 +124,15 @@ class TestMakeKeywordPattern(unittest.TestCase):
 
         self.assertEqual(result["keywords"], expected_keywords)
         self.assertEqual(result["summary"], expected_summary)
+
+    def test_calculate_keyword_error_rate_rejects_length_mismatch(self):
+        with self.assertRaises(ValueError):
+            calculate_keyword_error_rate_with_pattern(
+                ["삼성전자 주가가 올랐습니다."],
+                [],
+                ["삼성전자"],
+                COMPLEX_JOSA,
+            )
 
 
 if __name__ == '__main__':

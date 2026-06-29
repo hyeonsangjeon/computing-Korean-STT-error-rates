@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.10"
+version = "0.0.0.11"
 description = "Korean STT (Speech-to-Text) error rate calculation package"
 readme = "README.md"
 license = {text = "MIT"}
@@ -23,11 +23,13 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 keywords = ["STT", "ASR", "Korean", "NLP", "CER", "WER", "speech recognition"]
 dependencies = [
     "jiwer",
-    "pandas",
 ]
 requires-python = ">=3.7"
 

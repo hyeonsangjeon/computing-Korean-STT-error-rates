@@ -2,7 +2,7 @@
 """
 __docformat__ = "restructuredtext"
 # Let users know if they're missing any of our hard dependencies
-hard_dependencies = ("jiwer", "pandas")
+hard_dependencies = ("jiwer",)
 missing_dependencies = []
 
 for dependency in hard_dependencies:
@@ -22,5 +22,12 @@ from nlptutti.asr_metrics import (
         
 )
 
-#__all__ = ["get_cer",
-#           "get_wer"]
+__all__ = [
+    "get_cer",
+    "get_wer",
+    "get_crr",
+    "make_keyword_pattern",
+    "calculate_keyword_error_rate_with_pattern",
+    "COMPLEX_JOSA",
+    "COMPLEX_EOMI",
+]

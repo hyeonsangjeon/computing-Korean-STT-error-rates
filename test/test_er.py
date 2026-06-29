@@ -43,6 +43,55 @@ class TestER(unittest.TestCase):
 
         self.assertTrue(abs(cer - expected_error_rate) < 1e-6)
 
+    def test_cer_empty_strings_are_perfect_match(self):
+        result_metric = nt.get_cer("", "")
+
+        self.assertEqual(result_metric["cer"], 0.0)
+        self.assertEqual(result_metric["substitutions"], 0)
+        self.assertEqual(result_metric["deletions"], 0)
+        self.assertEqual(result_metric["insertions"], 0)
+
+    def test_cer_empty_reference_counts_insertions(self):
+        result_metric = nt.get_cer("", "가나다")
+
+        self.assertEqual(result_metric["cer"], 1.0)
+        self.assertEqual(result_metric["substitutions"], 0)
+        self.assertEqual(result_metric["deletions"], 0)
+        self.assertEqual(result_metric["insertions"], 3)
+
+    def test_wer_empty_strings_are_perfect_match(self):
+        result_metric = nt.get_wer("", "")
+
+        self.assertEqual(result_metric["wer"], 0.0)
+        self.assertEqual(result_metric["substitutions"], 0)
+        self.assertEqual(result_metric["deletions"], 0)
+        self.assertEqual(result_metric["insertions"], 0)
+
+    def test_wer_empty_reference_counts_insertions(self):
+        result_metric = nt.get_wer("", "hello world")
+
+        self.assertEqual(result_metric["wer"], 1.0)
+        self.assertEqual(result_metric["substitutions"], 0)
+        self.assertEqual(result_metric["deletions"], 0)
+        self.assertEqual(result_metric["insertions"], 2)
+
+    def test_crr_empty_strings_are_perfect_match(self):
+        result_metric = get_crr("", "")
+
+        self.assertEqual(result_metric["crr"], 1.0)
+        self.assertEqual(result_metric["substitutions"], 0)
+        self.assertEqual(result_metric["deletions"], 0)
+        self.assertEqual(result_metric["insertions"], 0)
+
+    def test_cer_always_ignores_whitespace(self):
+        result_metric = nt.get_cer("또 다른 방법", "또다른방법", rm_punctuation=False)
+
+        self.assertEqual(result_metric["cer"], 0.0)
+
+    def test_cer_punctuation_flag_only_controls_punctuation(self):
+        self.assertEqual(nt.get_cer("가,나", "가나", rm_punctuation=True)["cer"], 0.0)
+        self.assertGreater(nt.get_cer("가,나", "가나", rm_punctuation=False)["cer"], 0.0)
+
 
     def test_korean_cer_simple_sentence_case(self):
         refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다"

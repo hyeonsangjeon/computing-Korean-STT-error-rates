@@ -17,18 +17,11 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install build tools
-        run: python -m pip install --upgrade pip build wheel twine pkginfo
+      - name: Install build and test tools
+        run: python -m pip install --upgrade pip build wheel twine pkginfo pytest
 
       - name: Clean old builds
         run: rm -rf dist build *.egg-info
-      
-      - name: Remove setup.py if exists (to avoid conflicts with pyproject.toml)
-        run: |
-          if [ -f setup.py ]; then
-            rm setup.py
-            echo "Removed setup.py to avoid conflicts"
-          fi
       
       - name: Verify pyproject.toml exists
         run: |
@@ -46,6 +39,11 @@ jobs:
           find . -name "*.py" | xargs head -n 5
           echo "==== Python 경로 확인 ===="
           python -c "import sys; print(sys.path)"
+
+      - name: Install package and run tests
+        run: |
+          python -m pip install -e .
+          python -m pytest test -q
       
       - name: Build package
         run: python -m build

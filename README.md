@@ -1,6 +1,8 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/hyeonsangjeon/youtube-dl-nas/master/LICENSE)
 [![Downloads](https://static.pepy.tech/badge/nlptutti)](https://pepy.tech/project/nlptutti)
 [![PyPI version](https://badge.fury.io/py/nlptutti.svg)](https://pypi.org/project/nlptutti/)
+[![Tests](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml/badge.svg)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
+[![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 # 한국어 자동 음성 인식 평가를 위한 유사도 측정 함수 패키지
 
 이 저장소에는 Amazon Transcribes와 같은 한글 문장 인식기의 출력 스크립트의 낱말 오류율(CER), 단어 오류율(WER)을 계산하는 간단한 Python 패키지가 포함되어있습니다. 

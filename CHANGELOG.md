@@ -22,6 +22,7 @@
 - Python 지원 범위를 실제 CI와 맞게 3.8 이상으로 명확히 함.
 - JiWER 지원 범위를 3 이상 5 미만으로 명시.
 - 빌드 백엔드를 wheel 명령이 내장된 setuptools 70.1 이상으로 현대화.
+- GitHub Actions를 Node.js 24 기반 checkout v6와 setup-python v6로 업데이트.
 - make_keyword_pattern의 조사 목록을 생략하면 기본 한국어 조사 목록을 사용하도록 개선.
 - README에 기본 정규화 정책, 표준식 선택, 새 API 예제와 사용자 매뉴얼 링크 추가.
 

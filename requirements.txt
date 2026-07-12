@@ -1,1 +1,1 @@
-jiwer
+jiwer>=3,<5

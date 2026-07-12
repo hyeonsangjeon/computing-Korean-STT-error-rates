@@ -3,6 +3,44 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
+## [0.0.0.12] - 2026-07-12
+
+---
+
+### Added
+- 기존 정규화 오류율과 표준 CER/WER를 명시적으로 선택하는 rate_mode 옵션 추가.
+  - 기본값은 이전 버전과 동일한 normalized로 고정.
+  - standard는 사용자가 직접 지정한 경우에만 적용.
+- 여러 문장을 한 번에 평가하는 evaluate_corpus 추가.
+  - micro/macro CER·WER, 편집 횟수 합계, 완전 일치 문장 수, 문장 오류율 제공.
+- 키워드 실제 언급 횟수와 false positive/false negative를 집계하는 evaluate_keywords 추가.
+  - 선택적으로 ORG, PRODUCT와 같은 라벨별 precision, recall, F1 제공.
+- 문자·단어 단위 정렬과 치환/삭제/삽입 빈도를 보여주는 explain_errors 추가.
+- NFC, NFD, NFKC, NFKD 유니코드 정규화를 선택할 수 있는 unicode_normalization 옵션 추가.
+
+### Changed
+- Python 지원 범위를 실제 CI와 맞게 3.8 이상으로 명확히 함.
+- JiWER 지원 범위를 3 이상 5 미만으로 명시.
+- 빌드 백엔드를 wheel 명령이 내장된 setuptools 70.1 이상으로 현대화.
+- make_keyword_pattern의 조사 목록을 생략하면 기본 한국어 조사 목록을 사용하도록 개선.
+- README에 기본 정규화 정책, 표준식 선택, 새 API 예제와 사용자 매뉴얼 링크 추가.
+
+### Fixed
+- 공백이 포함된 입력 키워드도 붙여 쓴 표현과 띄어 쓴 표현을 모두 찾도록 수정.
+- README 라이선스 배지가 다른 저장소를 가리키던 링크 수정.
+- README의 키워드 출력 예시에서 잘못 표시된 키워드명 수정.
+
+### Compatibility
+- get_cer, get_wer, get_crr의 기본 계산 결과와 기존 반환 키를 그대로 유지.
+- calculate_keyword_error_rate_with_pattern의 문장 존재 여부 기반 집계 방식 유지.
+- 새 표준식과 유니코드 정규화는 모두 명시적으로 선택할 때만 적용.
+
+### Tests
+- 기본값 고정, 표준식, 빈 참조문장, 유니코드 정규화, 코퍼스 집계, 반복 키워드, 오탐, 오류 정렬 테스트 추가.
+- 기존 19개 테스트를 포함해 총 39개 테스트로 회귀 범위 확대.
+
+---
+
 ## [0.0.0.11] - 2026-06-29
 
 ---

@@ -3,7 +3,7 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
-## [0.0.0.12] - 2026-07-12
+## [0.0.0.12] - 2026-07-16
 
 ---
 
@@ -15,6 +15,10 @@
   - micro/macro CER·WER, 편집 횟수 합계, 완전 일치 문장 수, 문장 오류율 제공.
 - 키워드 실제 언급 횟수와 false positive/false negative를 집계하는 evaluate_keywords 추가.
   - 선택적으로 ORG, PRODUCT와 같은 라벨별 precision, recall, F1 제공.
+- 참조 개체명 span의 문자 오류율과 개체명 언급 F1을 함께 제공하는 evaluate_entities 추가.
+  - Entity CER micro/macro, 개체명·라벨별 편집 횟수, 누락·추가·오인식 목록 제공.
+  - 사용자가 명시한 aliases만 동일 개체의 허용 전사형으로 처리하며 퍼지 매칭은 적용하지 않음.
+  - NE-WER, NEER, Spoken NER 관련 논문과 한국어 적용 기준을 README와 사용자 매뉴얼에 명시.
 - 문자·단어 단위 정렬과 치환/삭제/삽입 빈도를 보여주는 explain_errors 추가.
 - NFC, NFD, NFKC, NFKD 유니코드 정규화를 선택할 수 있는 unicode_normalization 옵션 추가.
 
@@ -35,10 +39,13 @@
 - get_cer, get_wer, get_crr의 기본 계산 결과와 기존 반환 키를 그대로 유지.
 - calculate_keyword_error_rate_with_pattern의 문장 존재 여부 기반 집계 방식 유지.
 - 새 표준식과 유니코드 정규화는 모두 명시적으로 선택할 때만 적용.
+- evaluate_entities는 새 API로만 추가하고 기존 함수의 계산 및 매칭 결과는 변경하지 않음.
+- evaluate_entities도 rate_mode="normalized", unicode_normalization=None을 기본값으로 사용.
 
 ### Tests
 - 기본값 고정, 표준식, 빈 참조문장, 유니코드 정규화, 코퍼스 집계, 반복 키워드, 오탐, 오류 정렬 테스트 추가.
-- 기존 19개 테스트를 포함해 총 39개 테스트로 회귀 범위 확대.
+- 개체명 span CER, 별칭 opt-in, 조사·띄어쓰기, 내부/외부 삽입, 반복 언급, 라벨 집계, 입력 검증 테스트 추가.
+- 기존 테스트를 포함해 총 50개 테스트로 회귀 범위 확대.
 
 ---
 

@@ -10,12 +10,14 @@ from nlptutti.asr_metrics import (
     get_wer,
     make_keyword_pattern,
 )
+from nlptutti.entity_metrics import evaluate_entities
 
 __all__ = [
     "COMPLEX_EOMI",
     "COMPLEX_JOSA",
     "calculate_keyword_error_rate_with_pattern",
     "evaluate_corpus",
+    "evaluate_entities",
     "evaluate_keywords",
     "explain_errors",
     "get_cer",

@@ -51,7 +51,7 @@ Nlptutti 기본 정규화 오류율:
 - English: https://hyeonsangjeon.github.io/job-transcribe/en/
 
 ### 사용자 매뉴얼
-설치부터 CER/WER/CRR, 코퍼스 평가, 키워드·개체명 보존 평가, 오류 상세 분석까지 함수별 예제를 제공합니다.
+설치부터 CER/WER/CRR, 코퍼스 평가, Entity CER·개체명 F1, 키워드 보존 평가, 오류 상세 분석까지 함수별 예제를 제공합니다.
 - Korean manual: https://hyeonsangjeon.github.io/job-transcribe/nlptutti/
 
 ### 사용방법 
@@ -67,6 +67,7 @@ pip install nlptutti
 - 참조문장은 비어 있고 가설문장만 있는 경우에는 전체를 삽입 오류로 계산합니다.
 - CER/CRR 계산에서는 `rm_punctuation` 값과 관계없이 공백을 제거합니다. `rm_punctuation`은 문장부호 제거 여부만 제어합니다.
 - 키워드 패턴은 정규식 특수문자를 포함한 키워드도 안전하게 처리하며, 긴 단어 내부의 부분문자열 오탐을 줄이기 위해 키워드 앞뒤 경계를 검사합니다.
+- `evaluate_entities`의 별칭은 `aliases`에 직접 지정한 경우에만 정답으로 인정합니다. 발음 유사도나 퍼지 매칭은 자동으로 적용하지 않습니다.
 - `calculate_keyword_error_rate_with_pattern`은 참조문장 리스트와 STT 결과 리스트의 길이가 다르면 `ValueError`를 발생시킵니다.
 
 #### CER
@@ -155,9 +156,45 @@ print(report["cer"]["micro"])  # 0.4
 print(report["cer"]["macro"])  # 0.41666666666666663
 ~~~
 
+### 개체명 중심 평가 (evaluate_entities)
+
+전체 문장 CER와 별도로 회사명, 사람 이름, 상품명처럼 중요한 개체명 구간의 문자 오류율과 언급 보존 성능을 함께 평가합니다. 논문의 Named Entity WER(NE-WER)처럼 참조 개체명 span에 정렬된 오류만 Entity CER로 집계하되, 한국어에서는 단어 경계의 영향을 줄이기 위해 문자 단위로 계산합니다.[3] 개체명의 추가 인식과 누락은 precision, recall, F1으로 별도 집계합니다.
+
+~~~python
+import nlptutti as metrics
+
+report = metrics.evaluate_entities(
+    ["삼성전자의 갤럭시 S26 발표"],
+    ["삼성전다의 갤럭시 에스 이십육 발표와 애플"],
+    {
+        "ORG": ["삼성전자", "애플"],
+        "PRODUCT": ["갤럭시 S26"],
+    },
+    aliases={
+        "갤럭시 S26": ["갤럭시 에스 이십육"],
+    },
+)
+
+print(report["entity_cer"]["micro"])  # 0.1
+print(report["summary"]["f1"])  # 0.5
+print(report["labels"]["PRODUCT"]["f1"])  # 1.0
+print([(e["type"], e["entity"]) for e in report["errors"]])
+# [("misrecognition", "삼성전자"), ("addition", "애플")]
+~~~
+
+- **Entity CER:** 참조 개체명 span 내부의 치환·삭제·삽입을 문자 단위로 계산합니다. `micro`는 전체 편집 횟수 기반, `macro`는 개체명 언급별 평균입니다.
+- **계산식 선택:** 기존 사용자 호환성을 위해 기본값은 `rate_mode="normalized"`입니다. 논문의 NE-WER처럼 참조 개체명 문자 수를 분모로 보고하려면 `rate_mode="standard"`를 지정합니다. Entity CER는 NE-WER의 문자 단위 응용이며 논문 구현을 그대로 재현한 지표는 아닙니다.
+- **개체명 F1:** 정확한 개체명 언급과 명시적으로 허용한 별칭을 기준으로 추가·누락을 계산합니다.
+- **한국어 처리:** 개체명 내부 띄어쓰기와 기본 조사·어미 결합을 허용합니다. 조사는 Entity CER span에서 제외됩니다.
+- **별칭 정책:** `aliases`는 숫자 읽기나 영문 표기의 허용 가능한 전사형처럼 실제로 같은 개체인 표현만 등록합니다. 등록하지 않은 유사 표현은 오류입니다.
+- **오탐 해석:** 참조에 없는 개체명의 추가 인식은 Entity CER가 아니라 precision/F1과 `errors`의 `addition`으로 확인합니다.
+- **모델 범위:** 이 함수는 NER 모델을 실행하지 않습니다. 사용자가 제공한 개체명 사전을 평가합니다.
+
+NE-WER는 일반 WER를 참조 개체명 단어에 제한한 지표로 설명되며, 최근 Spoken NER 연구의 NEER도 전체 WER를 대체하기보다 도메인 핵심어 분석을 보완하는 지표로 다룹니다.[3][4] ASR 오류와 개체명 인식 오류의 관계를 분석한 연구도 있어 Entity CER와 F1을 함께 확인하는 편이 안전합니다.[5]
+
 ### 키워드·개체명 보존 평가 (evaluate_keywords)
 
-문장별 실제 언급 횟수를 기준으로 누락과 추가 인식을 함께 집계합니다. 라벨 딕셔너리를 넘기면 ORG, PRODUCT 같은 유형별 결과도 제공합니다. 이 함수는 키워드 목록을 평가하며 NER 모델을 실행하지는 않습니다.
+문장별 실제 언급 횟수를 기준으로 누락과 추가 인식을 함께 집계합니다. 라벨 딕셔너리를 넘기면 ORG, PRODUCT 같은 유형별 결과도 제공합니다. 문자 단위 Entity CER와 별칭, 오류 목록까지 필요하면 `evaluate_entities`를 사용하십시오. 두 함수 모두 키워드·개체명 목록을 평가하며 NER 모델을 실행하지는 않습니다.
 
 ~~~python
 import nlptutti as metrics
@@ -348,6 +385,11 @@ print(f"전체 키워드 에러율: {s['keyword_error_rate']:.1%}")
 - 형태소 변이, 띄어쓰기 오류, 조사·어미 결합 등 한국어 STT 결과의 자연스러운 변형을 고려하여 키워드 인식 성능을 신뢰성 있게 평가합니다.
 - 특히 고유명사, 신조어, 전문용어 등 특정 단어의 인식률 분석 시 유용합니다.
 
-### References 
-- `[1]`. Word Error Rate, https://en.wikipedia.org/wiki/Word_error_rate
-- `[2]`. Computing error rates, Text Digitisation, https://sites.google.com/site/textdigitisation/qualitymeasures/computingerrorrates
+### References
+- `[1]`. [Word Error Rate](https://en.wikipedia.org/wiki/Word_error_rate)
+- `[2]`. [Computing error rates, Text Digitisation](https://sites.google.com/site/textdigitisation/qualitymeasures/computingerrorrates)
+- `[3]`. Galibert et al., [Generating Task-Pertinent sorted Error Lists for Speech Recognition](https://aclanthology.org/L16-1297/), LREC 2016. NE-WER를 참조 개체명 span에 제한된 WER로 설명합니다.
+- `[4]`. Le-Duc et al., [Medical Spoken Named Entity Recognition](https://aclanthology.org/2025.naacl-industry.59/), NAACL 2025. WER·KER를 보완하는 Named-Entity-Error-Rate를 논의합니다.
+- `[5]`. Szymański et al., [Why Aren't We NER Yet? Artifacts of ASR Errors in Named Entity Recognition in Spontaneous Speech Transcripts](https://aclanthology.org/2023.acl-long.98/), ACL 2023. ASR 오류와 개체명 인식 오류의 관계 및 오류 유형을 분석합니다.
+- `[6]`. Gong et al., [BR-ASR: Efficient and Scalable Bias Retrieval Framework for Contextual Biasing ASR in Speech LLM](https://www.isca-archive.org/interspeech_2025/gong25_interspeech.html), Interspeech 2025. 일반 WER와 별도로 bias word 성능을 보고합니다.
+- `[7]`. K et al., [Advocating Character Error Rate for Multilingual ASR Evaluation](https://aclanthology.org/2025.findings-naacl.277/), NAACL 2025 Findings. 단어 경계와 형태가 다양한 다국어 ASR에서 CER 병행의 근거를 제시합니다.

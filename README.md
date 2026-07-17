@@ -5,7 +5,8 @@
 [![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 # 한국어 자동 음성 인식 오류율 측정 패키지
 
-Amazon Transcribe와 같은 음성 인식기의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR)을 계산하는 Python 패키지입니다.
+STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR)을 계산하는 Python 패키지입니다.
+예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper 같은 음성 인식 모델이 생성한 결과를 같은 기준으로 평가할 수 있습니다.
 정답 문장(reference)과 인식 문장(hypothesis) 사이의 Levenshtein 최소 편집거리에서 치환, 삭제, 삽입 횟수를 계산합니다.
 
 문자 오류율(CER/WER)은 자동 음성 인식 시스템의 성능에 대한 일반적인 메트릭입니다. CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다. 자세한 내용은 WER 문서를 참조하십시오.[1]

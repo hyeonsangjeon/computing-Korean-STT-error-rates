@@ -1,67 +1,303 @@
-name: Publish Python 🐍 distribution 📦 to PyPI
+name: Publish package to PyPI
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Test Python package"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pypi-main
+  cancel-in-progress: false
 
 jobs:
-  build-and-publish:
+  build:
+    name: Build and verify main
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-
+    outputs:
+      publish: ${{ steps.pypi.outputs.publish }}
+      source_sha: ${{ steps.source.outputs.sha }}
+      version: ${{ steps.verify.outputs.version }}
     steps:
-      - name: Checkout code
+      - name: Resolve tested revision
+        id: source
+        env:
+          DISPATCH_SHA: ${{ github.sha }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          source_sha="${WORKFLOW_RUN_SHA:-${DISPATCH_SHA}}"
+          if [[ -z "${source_sha}" ]]; then
+            echo "Could not resolve the tested revision." >&2
+            exit 1
+          fi
+          echo "sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out tested revision
         uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
       - name: Install build and test tools
-        run: python -m pip install --upgrade pip build wheel twine pkginfo pytest
-
-      - name: Clean old builds
-        run: rm -rf dist build *.egg-info
-
-      - name: Verify pyproject.toml exists
         run: |
-          if [ ! -f pyproject.toml ]; then
-            echo "Error: pyproject.toml not found!"
-            exit 1
-          fi
-          echo "pyproject.toml found"
+          python -m pip install --upgrade pip
+          python -m pip install build pytest twine
 
-      - name: Debug package structure and setup
-        run: |
-          echo "==== 패키지 구조 확인 ===="
-          find . -name "__init__.py"
-          echo "==== Python 파일 시작 부분 확인 ===="
-          find . -name "*.py" | xargs head -n 5
-          echo "==== Python 경로 확인 ===="
-          python -c "import sys; print(sys.path)"
-
-      - name: Install package and run tests
+      - name: Install package and run release tests
         run: |
           python -m pip install -e .
           python -m pytest test -q
 
-      - name: Build package
+      - name: Build wheel and source archive
         run: python -m build
 
-      - name: Verify build output
-        run: |
-          echo "==== 빌드된 파일들 ===="
-          ls -la dist/
-
-          echo "==== Wheel 파일 메타데이터 확인 ===="
-          python -m wheel unpack dist/*.whl --dest temp_wheel
-          find temp_wheel -name "METADATA" -exec cat {} \;
-
-      - name: Check package with twine
+      - name: Check package metadata rendering
         run: python -m twine check dist/*
 
-      - name: Publish to PyPI
+      - name: Verify distributions match README and version
+        id: verify
+        run: |
+          python - <<'PY'
+          import email
+          import glob
+          import os
+          import tarfile
+          import zipfile
+          from pathlib import Path
+
+          wheels = glob.glob("dist/*.whl")
+          sdists = glob.glob("dist/*.tar.gz")
+          if len(wheels) != 1 or len(sdists) != 1:
+              raise SystemExit(
+                  f"expected one wheel and one source archive; "
+                  f"found {len(wheels)} wheel(s) and {len(sdists)} source archive(s)"
+              )
+
+          with zipfile.ZipFile(wheels[0]) as archive:
+              metadata_names = [
+                  name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+              ]
+              if len(metadata_names) != 1:
+                  raise SystemExit("wheel must contain exactly one METADATA file")
+              wheel_metadata = email.message_from_bytes(archive.read(metadata_names[0]))
+
+          with tarfile.open(sdists[0], "r:gz") as archive:
+              metadata_members = [
+                  member
+                  for member in archive.getmembers()
+                  if member.isfile()
+                  and member.name.count("/") == 1
+                  and member.name.endswith("/PKG-INFO")
+              ]
+              if len(metadata_members) != 1:
+                  raise SystemExit("source archive must contain exactly one top-level PKG-INFO")
+              extracted = archive.extractfile(metadata_members[0])
+              if extracted is None:
+                  raise SystemExit("could not read source archive metadata")
+              sdist_metadata = email.message_from_bytes(extracted.read())
+
+          readme = Path("README.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+          versions = set()
+          for label, metadata in (("wheel", wheel_metadata), ("source archive", sdist_metadata)):
+              if metadata["Name"] != "nlptutti":
+                  raise SystemExit(f"{label} has unexpected package name {metadata['Name']!r}")
+              versions.add(metadata["Version"])
+              description_bytes = metadata.get_payload(decode=True)
+              if description_bytes is None:
+                  raise SystemExit(f"could not decode {label} description")
+              description = description_bytes.decode("utf-8").replace("\r\n", "\n")
+              if description != readme:
+                  raise SystemExit(f"{label} description does not exactly match README.md")
+
+          if len(versions) != 1:
+              raise SystemExit(f"distribution versions do not match: {sorted(versions)}")
+          version = versions.pop()
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+          print(f"verified nlptutti {version}: wheel, source archive, and README match")
+          PY
+
+      - name: Check whether this version needs publication
+        id: pypi
+        env:
+          PACKAGE_VERSION: ${{ steps.verify.outputs.version }}
+        run: |
+          python - <<'PY'
+          import difflib
+          import json
+          import os
+          import subprocess
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          version = os.environ["PACKAGE_VERSION"]
+          url = f"https://pypi.org/pypi/nlptutti/{version}/json"
+          request = urllib.request.Request(
+              url,
+              headers={"Cache-Control": "no-cache", "User-Agent": "nlptutti-release-check/1.0"},
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  published = json.load(response)
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              published = None
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          if published is None:
+              with output_path.open("a", encoding="utf-8") as output:
+                  output.write("publish=true\n")
+              summary_path.write_text(
+                  f"## PyPI release\n\n`nlptutti {version}` is new and will be published.\n",
+                  encoding="utf-8",
+              )
+              raise SystemExit(0)
+
+          readme = Path("README.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+          description = published["info"]["description"].replace("\r\n", "\n")
+          if description != readme:
+              difference = "".join(
+                  difflib.unified_diff(
+                      description.splitlines(keepends=True),
+                      readme.splitlines(keepends=True),
+                      fromfile=f"PyPI nlptutti {version}",
+                      tofile="README.md",
+                  )
+              )
+              print(difference)
+              raise SystemExit(
+                  f"nlptutti {version} already exists on PyPI but its description differs "
+                  "from README.md; bump the project version before merging"
+              )
+
+          release_paths = [
+              "LICENSE",
+              "MANIFEST.in",
+              "README.md",
+              "nlptutti",
+              "pyproject.toml",
+              "requirements.txt",
+          ]
+          tag_check = subprocess.run(
+              ["git", "rev-parse", "--verify", f"refs/tags/{version}^{{commit}}"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          if tag_check.returncode != 0:
+              raise SystemExit(
+                  f"nlptutti {version} exists on PyPI but Git tag {version} is missing"
+              )
+          changed = subprocess.run(
+              ["git", "diff", "--name-only", version, "HEAD", "--", *release_paths],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout.splitlines()
+          if changed:
+              print("Package files changed without a version bump:")
+              print("\n".join(f"- {path}" for path in changed))
+              raise SystemExit(
+                  f"nlptutti {version} is already published; bump the project version "
+                  "before merging package changes"
+              )
+
+          with output_path.open("a", encoding="utf-8") as output:
+              output.write("publish=false\n")
+          summary_path.write_text(
+              f"## PyPI release\n\n`nlptutti {version}` is already published and README.md matches.\n",
+              encoding="utf-8",
+          )
+          print(f"nlptutti {version} is already published and synchronized; skipping upload")
+          PY
+
+      - name: Upload verified distributions
+        if: steps.pypi.outputs.publish == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions-${{ steps.verify.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  github-release:
+    name: Create GitHub Release ${{ needs.build.outputs.version }}
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions-${{ needs.build.outputs.version }}
+          path: dist
+
+      - name: Create release from the tested main revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          existing_sha=""
+          if existing_sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${VERSION}" --jq .sha 2>/dev/null); then
+            if [[ "${existing_sha}" != "${SOURCE_SHA}" ]]; then
+              echo "Tag ${VERSION} points to ${existing_sha}, not tested revision ${SOURCE_SHA}." >&2
+              exit 1
+            fi
+          fi
+
+          if gh release view "${VERSION}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "GitHub Release ${VERSION} already exists; keeping its existing assets."
+          else
+            gh release create "${VERSION}" dist/* \
+              --repo "${GITHUB_REPOSITORY}" \
+              --target "${SOURCE_SHA}" \
+              --title "nlptutti ${VERSION}" \
+              --generate-notes \
+              --latest
+          fi
+
+  publish:
+    name: Publish ${{ needs.build.outputs.version }} to PyPI
+    needs: [build, github-release]
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/nlptutti/${{ needs.build.outputs.version }}/
+    permissions:
+      contents: read
+    steps:
+      - name: Download verified distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distributions-${{ needs.build.outputs.version }}
+          path: dist
+
+      - name: Publish verified distributions
         uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: false
           verbose: true

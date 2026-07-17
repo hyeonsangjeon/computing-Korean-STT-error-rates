@@ -19,6 +19,7 @@
   - Entity CER micro/macro, 개체명·라벨별 편집 횟수, 누락·추가·오인식 목록 제공.
   - 사용자가 명시한 aliases만 동일 개체의 허용 전사형으로 처리하며 퍼지 매칭은 적용하지 않음.
   - NE-WER, NEER, Spoken NER 관련 논문과 한국어 적용 기준을 README와 사용자 매뉴얼에 명시.
+  - ContextASR-Bench, NVIDIA NeMo-Skills, Teklia ie-eval, PIER의 실제 공개 구현과 Nlptutti의 차이를 README와 사용자 매뉴얼에 명시.
 - 문자·단어 단위 정렬과 치환/삭제/삽입 빈도를 보여주는 explain_errors 추가.
 - NFC, NFD, NFKC, NFKD 유니코드 정규화를 선택할 수 있는 unicode_normalization 옵션 추가.
 
@@ -45,7 +46,8 @@
 ### Tests
 - 기본값 고정, 표준식, 빈 참조문장, 유니코드 정규화, 코퍼스 집계, 반복 키워드, 오탐, 오류 정렬 테스트 추가.
 - 개체명 span CER, 별칭 opt-in, 조사·띄어쓰기, 내부/외부 삽입, 반복 언급, 라벨 집계, 입력 검증 테스트 추가.
-- 기존 테스트를 포함해 총 50개 테스트로 회귀 범위 확대.
+- PIER와 ContextASR-Bench의 고정 커밋 실행 결과를 fixture로 보존하고, 공통 동작과 문자/단어 단위 차이를 검증하는 교차 회귀 테스트 4개 추가.
+- 기존 테스트를 포함해 총 54개 테스트로 회귀 범위 확대.
 
 ---
 

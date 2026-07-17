@@ -192,6 +192,18 @@ print([(e["type"], e["entity"]) for e in report["errors"]])
 
 NE-WER는 일반 WER를 참조 개체명 단어에 제한한 지표로 설명되며, 최근 Spoken NER 연구의 NEER도 전체 WER를 대체하기보다 도메인 핵심어 분석을 보완하는 지표로 다룹니다.[3][4] ASR 오류와 개체명 인식 오류의 관계를 분석한 연구도 있어 Entity CER와 F1을 함께 확인하는 편이 안전합니다.[5]
 
+### 관련 공개 구현
+
+논문 설명뿐 아니라 실제 계산 코드를 확인하려면 아래 공개 구현을 함께 참고할 수 있습니다. 이름이 비슷한 지표라도 입력 형식, 매칭 정책, 계산 단위가 다르므로 점수를 그대로 서로 비교해서는 안 됩니다.
+
+| 공개 구현 | 실제 제공 기능 | Nlptutti와의 차이 |
+| --- | --- | --- |
+| [ContextASR-Bench 평가 코드](https://github.com/MrSupW/ContextASR-Bench/tree/main/evaluation) / [NVIDIA NeMo-Skills 구현](https://github.com/NVIDIA-NeMo/Skills/blob/main/nemo_skills/evaluation/evaluator/contextasr.py) | 개체명 목록을 이용해 WER, 퍼지 매칭 기반 NE-WER, 정확 일치 기반 NE-FNR 계산 | ContextASR는 개체명 단어열을 퍼지 추출한 뒤 WER를 계산합니다. Nlptutti는 퍼지 매칭을 기본으로 사용하지 않고 한국어 문자 span과 명시적 `aliases`를 평가합니다. |
+| [Teklia `ie-eval`](https://gitlab.teklia.com/ner/metrics/ie-eval) ([ECER/EWER 문서](https://doc.teklia.com/ner_ie_eval/usage/ecer_ewer/)) | BIO 정답·예측 파일로 ECER/EWER와 유형별·순서 독립 점수 계산 | Teklia는 이미 태깅된 NER 출력을 입력받습니다. Nlptutti는 원문 reference/hypothesis와 사용자가 제공한 개체명 사전을 입력받으며 NER 모델을 실행하지 않습니다. |
+| [PIER](https://github.com/enesyugan/PIER-CodeSwitching-Evaluation) | 전체 문장을 정렬한 뒤 참조의 관심 단어 위치에 해당하는 편집만 계산 | PIER는 코드 스위칭 관심 단어를 단어 단위로 평가합니다. Nlptutti Entity CER는 같은 관심 구간 평가 원칙을 한국어 문자 단위로 적용합니다. |
+
+`evaluate_entities`는 위 저장소의 코드를 포팅한 함수가 아니라, NE-WER·ECER·PIER 계열의 공통 평가 원칙을 한국어 원문과 개체명 사전 입력에 맞춰 독립적으로 구현한 API입니다. 공통 계약과 의도적인 차이는 [교차 검증 테스트](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/test_entity_reference_implementations.py)와 [고정 upstream 결과](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/fixtures/entity_reference_implementations.json)에 기록했습니다. 패키지 CI는 외부 저장소를 내려받지 않으며, 검증한 upstream 커밋과 결과를 fixture로 고정해 재현성을 유지합니다.
+
 ### 키워드·개체명 보존 평가 (evaluate_keywords)
 
 문장별 실제 언급 횟수를 기준으로 누락과 추가 인식을 함께 집계합니다. 라벨 딕셔너리를 넘기면 ORG, PRODUCT 같은 유형별 결과도 제공합니다. 문자 단위 Entity CER와 별칭, 오류 목록까지 필요하면 `evaluate_entities`를 사용하십시오. 두 함수 모두 키워드·개체명 목록을 평가하며 NER 모델을 실행하지는 않습니다.

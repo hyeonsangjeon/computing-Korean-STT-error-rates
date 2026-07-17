@@ -1,0 +1,109 @@
+{
+  "verified_at": "2026-07-16",
+  "implementations": {
+    "pier": {
+      "repository": "https://github.com/enesyugan/PIER-CodeSwitching-Evaluation",
+      "commit": "09535fa0311cfec98176d1a4f7bec82094bb0d4f",
+      "entrypoint": "jiwer.measures.pier",
+      "fixtures": {
+        "entity_substitution": {
+          "reference": "before A B C after",
+          "tagged_reference": "before <tag A B C> after",
+          "hypothesis": "before A X C after",
+          "entity": "A B C",
+          "upstream": {
+            "pier_percent": 33.33333333333333,
+            "hits": 2,
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0
+          },
+          "nlptutti": {
+            "micro": 0.3333333333333333,
+            "hits": 2,
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "reference_characters": 3,
+            "f1": 0.0
+          }
+        },
+        "insertion_outside_entity": {
+          "reference": "before A B C after",
+          "tagged_reference": "before <tag A B C> after",
+          "hypothesis": "before A B C extra after",
+          "entity": "A B C",
+          "upstream": {
+            "pier_percent": 0.0,
+            "hits": 3,
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "rest_insertions": 1
+          },
+          "nlptutti": {
+            "micro": 0.0,
+            "hits": 3,
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "reference_characters": 3,
+            "f1": 1.0
+          }
+        }
+      }
+    },
+    "contextasr_bench": {
+      "repository": "https://github.com/MrSupW/ContextASR-Bench",
+      "commit": "897de87bd4eb430de28dca807fc725958c7ebc85",
+      "entrypoint": "evaluation/utils.py and evaluation/calculate_metrics.py",
+      "fixtures": {
+        "exact_entity_with_outside_insertion": {
+          "reference": "meet new york city today",
+          "hypothesis": "meet new york city soon today",
+          "entity": "new york city",
+          "upstream": {
+            "ne_wer": 0.0,
+            "ne_fnr": 0.0,
+            "hits": 3,
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0
+          },
+          "nlptutti": {
+            "micro": 0.0,
+            "hits": 11,
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "reference_characters": 11,
+            "f1": 1.0
+          }
+        },
+        "fuzzy_entity_misrecognition": {
+          "reference": "meet new york city today",
+          "hypothesis": "meet new york kitty today",
+          "entity": "new york city",
+          "upstream": {
+            "ne_wer": 0.3333333333333333,
+            "ne_fnr": 1.0,
+            "hits": 2,
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "reference_words": 3
+          },
+          "nlptutti": {
+            "micro": 0.18181818181818182,
+            "hits": 10,
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 1,
+            "reference_characters": 11,
+            "f1": 0.0
+          }
+        }
+      }
+    }
+  }
+}

@@ -3,6 +3,21 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
+## [0.0.0.15] - 2026-07-17
+
+---
+
+### Changed
+- PyPI 배포 인증을 장기 API 토큰 방식에서 GitHub Actions OIDC 기반 Trusted Publishing으로 전환.
+- `pypi` environment와 배포 워크플로의 신원을 PyPI 프로젝트에 직접 연결하도록 구성.
+- 배포 산출물에 PyPI 디지털 증명(attestation)을 함께 발행하도록 설정.
+
+### Security
+- 배포 워크플로에서 `PYPI_API_TOKEN` 참조를 제거하고, PyPI 업로드 job에만 단기 OIDC 토큰 발급 권한을 부여.
+- 최초 Trusted Publishing 배포 성공을 확인한 뒤 기존 GitHub Actions 저장소 비밀 값을 제거하도록 전환 절차를 분리.
+
+---
+
 ## [0.0.0.14] - 2026-07-17
 
 ---

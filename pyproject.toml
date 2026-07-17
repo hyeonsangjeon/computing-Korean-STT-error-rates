@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.12"
-description = "Korean STT (Speech-to-Text) error rate calculation package"
+version = "0.0.0.13"
+description = "Evaluation metrics for Korean STT outputs, including CER, WER, CRR, keywords, and entities"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [

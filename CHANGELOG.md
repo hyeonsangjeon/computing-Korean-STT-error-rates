@@ -3,6 +3,17 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
+## [0.0.0.13] - 2026-07-17
+
+---
+
+### Changed
+- README와 PyPI 설명을 특정 STT 공급자에 종속되지 않는 문구로 수정.
+- 지원 대상 예시는 Microsoft Azure Speech를 먼저 안내하고 Amazon Transcribe, Google Cloud Speech-to-Text, OpenAI Whisper를 함께 명시.
+- PyPI 패키지 요약에 CER, WER, CRR, 키워드, 개체명 평가 범위를 명확히 표시.
+
+---
+
 ## [0.0.0.12] - 2026-07-16
 
 ---

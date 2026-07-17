@@ -3,6 +3,24 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
+## [0.0.0.14] - 2026-07-17
+
+---
+
+### Changed
+- main 브랜치의 Python 3.8~3.14 CI가 성공한 뒤 새 버전을 자동으로 PyPI에 배포하도록 릴리스 흐름을 개선.
+- 검증한 동일 wheel과 source archive를 GitHub Release와 PyPI 배포에 사용하도록 구성.
+- 실제 업로드 job을 GitHub의 pypi environment에 연결해 Deployments 상태로 확인할 수 있도록 수정.
+
+### Release policy
+- pyproject.toml의 버전이 PyPI에 없을 때만 새 패키지를 업로드.
+- 같은 버전이 이미 존재하면 PyPI 설명과 현재 README.md가 정확히 일치하는지 검사하고, 일치하면 중복 배포를 생략.
+- 같은 버전의 PyPI 설명과 README.md가 다르면 버전 증가 없이 문서가 변경된 것으로 보고 배포 워크플로를 실패 처리.
+- 같은 버전의 Git 태그 이후 패키지 소스나 메타데이터가 변경된 경우에도 버전 증가를 요구.
+- wheel과 source archive의 이름, 버전, README 본문이 모두 일치한 경우에만 릴리스 산출물로 사용.
+
+---
+
 ## [0.0.0.13] - 2026-07-17
 
 ---

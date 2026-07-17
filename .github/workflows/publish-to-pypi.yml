@@ -288,6 +288,7 @@ jobs:
       url: https://pypi.org/project/nlptutti/${{ needs.build.outputs.version }}/
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Download verified distributions
         uses: actions/download-artifact@v8
@@ -298,6 +299,5 @@ jobs:
       - name: Publish verified distributions
         uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          attestations: false
+          attestations: true
           verbose: true

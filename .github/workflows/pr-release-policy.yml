@@ -1,0 +1,32 @@
+name: Check pull request release policy
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-policy:
+    name: Check version and changelog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout pull request history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check package release metadata
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          python .github/scripts/check_release_policy.py
+          --base "${BASE_SHA}"
+          --head "${HEAD_SHA}"

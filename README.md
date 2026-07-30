@@ -3,13 +3,77 @@
 [![PyPI version](https://badge.fury.io/py/nlptutti.svg)](https://pypi.org/project/nlptutti/)
 [![Tests](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml/badge.svg)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 [![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
-# 한국어 자동 음성 인식 오류율 측정 패키지
+# Nlptutti: 한국어 STT 오류율 측정 패키지
 
-STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR)을 계산하는 Python 패키지입니다.
+`nlptutti`는 STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR), 코퍼스·키워드·개체명 보존 성능을 평가하는 Python 패키지입니다.
 예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper 같은 음성 인식 모델이 생성한 결과를 같은 기준으로 평가할 수 있습니다.
 정답 문장(reference)과 인식 문장(hypothesis) 사이의 Levenshtein 최소 편집거리에서 치환, 삭제, 삽입 횟수를 계산합니다.
 
-### 한국어 STT 평가 지표 선택 기준
+## 1분 빠른 시작
+
+처음 사용하는 경우에는 설치 확인, CER·WER 평가, 개체명 보존 평가 순서로 실행하면 됩니다. 아래 예제는 서비스나 모델을 비교할 때 사용하는 표준 계산식인 `rate_mode="standard"`를 명시합니다.
+
+### 1. 설치 확인
+
+```bash
+python -m pip install -U nlptutti
+python -c "import nlptutti; print('nlptutti ready')"
+```
+
+`nlptutti ready`가 출력되면 설치와 import가 완료된 것입니다.
+
+### 2. CER·WER 첫 평가
+
+```python
+import nlptutti as metrics
+
+reference = "오늘 날씨가 맑습니다"
+hypothesis = "오늘 날씨는 맑습니다"
+
+cer = metrics.get_cer(reference, hypothesis, rate_mode="standard")
+wer = metrics.get_wer(reference, hypothesis, rate_mode="standard")
+
+print(round(cer["cer"], 4))  # 0.1111
+print(round(wer["wer"], 4))  # 0.3333
+```
+
+두 결과 모두 `0.0`이면 정답 문장과 인식 문장이 완전히 일치합니다. 값이 작을수록 오류가 적으며, 이 예제에서는 한 번의 단어 치환이 문자 기준 CER과 단어 기준 WER에 서로 다르게 반영됩니다.
+
+### 3. 개체명 보존 첫 평가
+
+```python
+import nlptutti as metrics
+
+report = metrics.evaluate_entities(
+    ["삼성전자가 갤럭시 S26을 공개했다"],
+    ["삼성전자가 갤럭시 S26을 공개했다"],
+    {
+        "ORG": ["삼성전자"],
+        "PRODUCT": ["갤럭시 S26"],
+    },
+    rate_mode="standard",
+)
+
+print(report["entity_cer"]["micro"])  # 0.0
+print(report["summary"]["f1"])        # 1.0
+print(report["errors"])               # []
+```
+
+`evaluate_entities`는 NER 모델을 실행하지 않습니다. 정답으로 평가할 회사명·인명·상품명 사전을 직접 제공하며, 완전히 보존된 예제의 성공 기준은 Entity CER `0.0`, F1 `1.0`, 빈 오류 목록입니다.
+
+### 첫 실행 성공 기준
+
+| 확인 단계 | 기대 결과 | 판정 기준 |
+| --- | --- | --- |
+| 설치 | `nlptutti ready` 출력 | import 오류 없이 패키지를 불러옵니다. |
+| CER·WER | `cer`, `wer`와 편집 횟수 반환 | `0.0`은 완전 일치이며 값이 작을수록 좋습니다. |
+| 개체명 | Entity CER, precision·recall·F1, 오류 목록 반환 | 완전 보존 시 Entity CER `0.0`, F1 `1.0`, `errors == []`입니다. |
+
+> 기존 결과를 재현할 때는 옵션을 생략해 기본값인 `rate_mode="normalized"`를 유지하십시오. `normalized` 결과와 `standard` 결과를 같은 표에서 직접 비교하지 마십시오.
+
+더 많은 입력 형식과 옵션은 [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)에서 확인할 수 있습니다.
+
+## 한국어 STT 평가 지표 선택 기준
 
 하나의 점수만으로 STT 품질 전체를 설명하기는 어렵습니다. 전체 전사 품질, 도메인 핵심어 보존, 오류 원인처럼 확인하려는 목적에 맞춰 지표를 선택하십시오.
 
@@ -29,6 +93,8 @@ STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER
 - 도메인 핵심 표현이 중요하면 전체 CER/WER에 `evaluate_keywords` 또는 `evaluate_entities`를 함께 보고합니다.
 
 설치부터 각 함수의 입력·출력 예제까지는 [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)에서 확인할 수 있습니다.
+
+## 계산식과 호환성
 
 CER과 WER은 자동 음성 인식 시스템의 성능을 측정하는 일반적인 지표입니다. CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다. 자세한 내용은 WER 문서를 참조하십시오.[1]
 문자 오류율은 다음과 같이 계산할 수 있습니다. 
@@ -62,7 +128,9 @@ Nlptutti 기본 정규화 오류율:
 
 > **호환성 정책:** <code>rate_mode</code>를 생략하면 기존 버전과 동일한 <code>rate_mode="normalized"</code>가 적용됩니다. 표준 CER/WER가 필요한 경우에만 <code>rate_mode="standard"</code>를 명시하십시오. 기본값은 기존 사용자 결과 보호를 위해 변경하지 않습니다.
 
-### 국내관련발표기고
+## 관련 자료
+
+### 국내 관련 발표·기고
 클라우드와 오픈소스 위스퍼를 이용한 한국어 음성 텍스트 변환
 - http://www.itdaily.kr/news/articleView.html?idxno=213297
 - http://www.comworld.co.kr/news/articleView.html?idxno=50818
@@ -76,11 +144,9 @@ Nlptutti 기본 정규화 오류율:
 설치부터 CER/WER/CRR, 코퍼스 평가, Entity CER·개체명 F1, 키워드 보존 평가, 오류 상세 분석까지 함수별 예제를 제공합니다.
 - Korean manual: https://hyeonsangjeon.github.io/job-transcribe/nlptutti/
 
-### 사용방법 
-가장 간단한 사용 사례는 두 문자열 간의 편집 거리를 계산하는 것입니다.
-```bash
-pip install nlptutti
-```
+## 사용방법
+
+빠른 시작을 확인한 뒤 아래 평가 정책과 API별 예제로 입력·출력 및 세부 옵션을 확장할 수 있습니다.
 
 ### 평가 정책
 - 기존 호출의 기본 계산식은 계속 <code>rate_mode="normalized"</code>입니다. 표준식은 <code>rate_mode="standard"</code>를 직접 지정할 때만 사용합니다.
@@ -92,7 +158,7 @@ pip install nlptutti
 - `evaluate_entities`의 별칭은 `aliases`에 직접 지정한 경우에만 정답으로 인정합니다. 발음 유사도나 퍼지 매칭은 자동으로 적용하지 않습니다.
 - `calculate_keyword_error_rate_with_pattern`은 참조문장 리스트와 STT 결과 리스트의 길이가 다르면 `ValueError`를 발생시킵니다.
 
-#### CER
+### CER
 
 ```python
 import nlptutti as metrics
@@ -116,7 +182,7 @@ insertions = result['insertions']
 # prints: [cer, substitutions, deletions, insertions] -> [CER = 0 / 34, S = 0, D = 0, I = 0]
 ```
 
-#### WER
+### WER
 
 ```python
 import nlptutti as metrics
@@ -132,7 +198,7 @@ insertions = result['insertions']
 # prints: [wer, substitutions, deletions, insertions] -> [WER =  2 / 4, S = 1, D = 1, I = 0]
 ```
 
-#### CRR
+### CRR
 
 ```python
 import nlptutti as metrics

@@ -1,0 +1,19 @@
+{
+  "text": "오늘 날씨가 맑습니다",
+  "segments": [
+    {
+      "start": 0,
+      "end": 1200,
+      "text": "오늘 날씨가"
+    },
+    {
+      "start": 1200,
+      "end": 2500,
+      "text": "맑습니다"
+    }
+  ],
+  "file": "sample.wav",
+  "model": "example-model",
+  "language": "ko",
+  "duration_s": 2.5
+}

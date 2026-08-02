@@ -133,6 +133,15 @@ jobs:
           print(f"verified nlptutti {version}: wheel, source archive, and README match")
           PY
 
+      - name: Verify installed wheel and quick start
+        run: |
+          python -m pip uninstall -y nlptutti
+          python -m pip install --force-reinstall dist/*.whl
+          python -m pip check
+          smoke_dir="$(mktemp -d)"
+          cd "${smoke_dir}"
+          python "${GITHUB_WORKSPACE}/.github/scripts/smoke_installed_package.py"
+
       - name: Check whether this version needs publication
         id: pypi
         env:

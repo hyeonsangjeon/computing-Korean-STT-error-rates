@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.17"
-description = "Evaluation metrics for Korean STT outputs, including CER, WER, CRR, keywords, and entities"
+version = "0.0.0.18"
+description = "Korean STT metrics and reproducible reports for text, JSON, SRT, and TSV transcripts"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -26,7 +26,20 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
-keywords = ["STT", "ASR", "Korean", "NLP", "CER", "WER", "speech recognition"]
+keywords = [
+    "STT",
+    "ASR",
+    "Korean",
+    "NLP",
+    "CER",
+    "WER",
+    "speech recognition",
+    "transcript evaluation",
+    "JSON",
+    "SRT",
+    "TSV",
+    "FunASR",
+]
 dependencies = [
     "jiwer>=3,<5",
 ]

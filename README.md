@@ -5,8 +5,8 @@
 [![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 # Nlptutti: 한국어 STT 오류율 측정 패키지
 
-`nlptutti`는 STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR), 코퍼스·키워드·개체명 보존 성능을 평가하는 Python 패키지입니다.
-예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper 같은 음성 인식 모델이 생성한 결과를 같은 기준으로 평가할 수 있습니다.
+`nlptutti`는 STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR), 코퍼스·키워드·개체명 보존 성능을 평가하고 재현 가능한 결과를 남기는 Python 패키지입니다.
+예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper, FunASR 같은 음성 인식 도구가 생성한 인식 문장을 같은 기준으로 평가할 수 있습니다. 일반 문자열뿐 아니라 명시된 계약에 맞는 JSON·SRT·TSV 결과도 입력할 수 있습니다.
 정답 문장(reference)과 인식 문장(hypothesis) 사이의 Levenshtein 최소 편집거리에서 치환, 삭제, 삽입 횟수를 계산합니다.
 
 ## 1분 빠른 시작
@@ -73,6 +73,44 @@ print(report["errors"])               # []
 
 더 많은 입력 형식과 옵션은 [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)에서 확인할 수 있습니다.
 
+### 4. JSON·SRT·TSV 결과 평가
+
+STT 모델을 다시 실행하지 않고 이미 생성된 구조화 결과를 읽어 같은 지표로 평가할 수 있습니다. 아래 예제는 JSON의 최상위 `text`를 가설문장으로 사용합니다.
+
+```python
+import nlptutti as metrics
+
+reference = "오늘 날씨가 맑습니다"
+transcript = metrics.parse_transcript(
+    {
+        "text": "오늘 날씨는 맑습니다",
+        "model": "example-model",
+        "language": "ko",
+    },
+    "json",
+)
+report = metrics.evaluate_transcript(
+    reference,
+    transcript,
+    rate_mode="standard",
+)
+
+print(round(report["metrics"]["cer"]["value"], 4))  # 0.1111
+print(round(report["metrics"]["wer"]["value"], 4))  # 0.3333
+print(report["schema_version"])                      # 1.0
+```
+
+| 입력 형식 | 평가 문자열 선택 | 시간 정보 처리 |
+| --- | --- | --- |
+| `text`·`txt` | 입력 문자열을 그대로 사용 | 없음 |
+| `json` | 기본적으로 최상위 `text` 사용 | 단위를 추정하지 않고 provenance에 원래 값 보존 |
+| `srt` | cue 텍스트를 순서대로 공백 하나로 연결 | SRT 타임코드를 provenance에만 보존 |
+| `tsv` | `start`, `end`, `text` 헤더를 검증하고 `text` 열 연결 | `start`·`end`를 초 단위로 검증하고 provenance에 보존 |
+
+JSON에 최상위 `text`가 없을 때만 `json_text_policy="segments_fallback"`을 직접 지정해 `segments[*].text`를 연결할 수 있습니다. 잘못된 구조화 입력은 빈 문장으로 바꾸지 않고 `TranscriptFormatError`를 발생시킵니다. 평가 여권에는 원문 대신 SHA-256과 길이, 실제 계산 옵션, 패키지 버전이 기록됩니다.
+
+파일 읽기, 네 형식별 예제, 반환 JSON 계약과 개인정보 주의사항은 [구조화 STT 결과 평가 안내](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/structured-transcripts.md)를 참조하십시오.
+
 ## 한국어 STT 평가 지표 선택 기준
 
 하나의 점수만으로 STT 품질 전체를 설명하기는 어렵습니다. 전체 전사 품질, 도메인 핵심어 보존, 오류 원인처럼 확인하려는 목적에 맞춰 지표를 선택하십시오.
@@ -86,6 +124,7 @@ print(report["errors"])               # []
 | 상품명·명령어 등 핵심어 보존 | `evaluate_keywords` | 문장 목록과 키워드 목록 또는 라벨 사전 | 반복 언급, 누락, 오탐을 precision·recall·F1으로 평가합니다. |
 | 회사명·인명 등 개체명 구간 품질 | `evaluate_entities` | 문장 목록, 개체명 목록 또는 라벨 사전, 선택적 별칭 | Entity CER와 언급 F1을 함께 봅니다. NER 모델을 실행하는 함수는 아닙니다. |
 | 치환·삭제·삽입 원인 분석 | `explain_errors` | 정답·인식 문장 한 쌍과 문자/단어 단위 | 점수 차이를 정렬 결과와 오류 빈도로 진단할 때 사용합니다. |
+| JSON·SRT·TSV 결과의 재현 평가 | `parse_transcript` + `evaluate_transcript` | 정답 문장과 구조화 STT 출력 | 입력 형식, 실제 평가 옵션, 패키지 버전을 함께 기록할 때 사용합니다. |
 
 - 모델이나 STT 서비스의 공식 비교에는 `rate_mode="standard"`와 코퍼스 `micro` 점수를 우선 사용합니다.
 - 기존 결과를 재현해야 할 때는 옵션을 생략해 기본값인 `rate_mode="normalized"`를 유지합니다.

@@ -36,3 +36,12 @@ jobs:
 
       - name: Check distribution metadata
         run: python -m twine check dist/*
+
+      - name: Verify installed wheel and quick start
+        run: |
+          python -m pip uninstall -y nlptutti
+          python -m pip install --force-reinstall dist/*.whl
+          python -m pip check
+          smoke_dir="$(mktemp -d)"
+          cd "${smoke_dir}"
+          python "${GITHUB_WORKSPACE}/.github/scripts/smoke_installed_package.py"

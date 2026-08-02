@@ -1,1 +1,3 @@
 include test/fixtures/entity_reference_implementations.json
+recursive-include test/fixtures/transcripts *.json *.srt *.tsv *.txt
+include docs/structured-transcripts.md

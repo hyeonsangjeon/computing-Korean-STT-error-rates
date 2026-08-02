@@ -3,6 +3,36 @@
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
 
+## [0.0.0.18] - 2026-08-03
+
+---
+
+### Added
+- 일반 텍스트와 JSON, SRT, TSV 형식의 STT 출력을 공급자 중립적으로 읽는 `parse_transcript` 공개 API 추가.
+- JSON 최상위 `text`를 기본으로 사용하고, 사용자가 `json_text_policy="segments_fallback"`을 지정한 경우에만 `segments[*].text`를 결합하는 명시적 입력 정책 추가.
+- 기존 CER, WER, CRR 함수로 평가한 결과와 실제 옵션, 패키지 버전, 입력 provenance를 `schema_version="1.0"` JSON 계약으로 반환하는 `evaluate_transcript` 추가.
+- 구조화 입력 오류를 빈 문자열로 숨기지 않고 전달하는 `TranscriptFormatError` 추가.
+- 네 입력 형식의 사용법, 시간 정보 처리, 오류 계약, 개인정보 주의사항을 설명하는 한국어 문서 추가.
+
+### Changed
+- SRT cue와 TSV `text` 열은 구간별 공백을 정리한 뒤 ASCII 공백 하나로 연결하도록 규칙을 고정.
+- 평가 여권은 reference와 hypothesis 원문을 복제하지 않고 SHA-256, 문자 수, UTF-8 byte 수만 기록하도록 구성.
+- FunASR CLI의 구조화 출력 형식을 고정 커밋에서 검토하되 모델·런타임 의존성 없이 독립 구현하고, 참조 범위와 라이선스 경계를 문서화.
+- 테스트 워크플로와 PyPI 배포 워크플로에서 빌드된 wheel을 source tree 밖에 다시 설치한 뒤 README 빠른 시작 경로를 실행하도록 배포물 검증 강화.
+
+### Compatibility
+- `get_cer`, `get_wer`, `get_crr`를 포함한 기존 공개 API와 반환값은 변경하지 않음.
+- 새 평가 API도 기존 기본값인 `rate_mode="normalized"`, `unicode_normalization=None`, `rm_punctuation=True`를 유지.
+- FunASR 또는 다른 STT 모델의 실행 패키지를 기본 의존성에 추가하지 않음.
+
+### Tests
+- 같은 전사를 text, JSON, SRT, TSV로 입력했을 때 동일한 평가 문자열과 CER·WER·CRR이 생성되는 골든 테스트 추가.
+- JSON 필드·정책, SRT cue·타임코드, TSV 헤더·시간 값과 malformed fixture에 대한 실패 계약 테스트 추가.
+- 평가 여권의 JSON 직렬화, 결정성, 원문 미포함, 옵션·provenance 기록을 검증하는 테스트 추가.
+
+---
+
+
 ## [0.0.0.17] - 2026-07-31
 
 ---

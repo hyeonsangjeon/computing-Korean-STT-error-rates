@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.18"
-description = "Korean STT metrics and reproducible reports for text, JSON, SRT, and TSV transcripts"
+version = "0.0.0.19"
+description = "Korean STT CER, WER, and CRR metrics with explicit normalization and reproducible reports"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -33,6 +33,9 @@ keywords = [
     "NLP",
     "CER",
     "WER",
+    "CRR",
+    "Korean text normalization",
+    "Unicode normalization",
     "speech recognition",
     "transcript evaluation",
     "JSON",

@@ -23,6 +23,20 @@ def main():
 
     reference = "오늘 날씨가 맑습니다"
     hypothesis = "오늘 날씨는 맑습니다"
+    cer = metrics.get_cer(reference, hypothesis, rate_mode="standard")
+    wer = metrics.get_wer(reference, hypothesis, rate_mode="standard")
+    crr = metrics.get_crr(reference, hypothesis, rate_mode="standard")
+
+    assert set(cer) == {"cer", "substitutions", "deletions", "insertions"}
+    assert set(wer) == {"wer", "substitutions", "deletions", "insertions"}
+    assert set(crr) == {"crr", "substitutions", "deletions", "insertions"}
+    assert round(cer["cer"], 4) == 0.1111
+    assert round(wer["wer"], 4) == 0.3333
+    assert crr["crr"] == 0.89
+    assert cer["substitutions"] == 1
+    assert wer["substitutions"] == 1
+    assert crr["substitutions"] == 1
+
     transcript = metrics.parse_transcript(
         {"text": hypothesis, "language": "ko"},
         "json",

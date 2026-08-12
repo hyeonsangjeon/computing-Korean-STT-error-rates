@@ -220,6 +220,10 @@ def get_cer(
 ) -> MetricResult:
     """Calculate character error rate for one reference/hypothesis pair.
 
+    Whitespace is always removed before character alignment. Punctuation is
+    removed when ``rm_punctuation=True``. The result contains ``cer`` and the
+    substitution, deletion, and insertion counts.
+
     ``rate_mode="normalized"`` is the historical Nlptutti behavior and remains
     the default for backward compatibility. Use ``rate_mode="standard"`` to
     divide by the reference length, which can produce a value greater than 1.
@@ -255,7 +259,17 @@ def get_wer(
     rate_mode: str = "normalized",
     unicode_normalization: Optional[str] = None,
 ) -> MetricResult:
-    """Calculate word error rate for one reference/hypothesis pair."""
+    """Calculate word error rate for one reference/hypothesis pair.
+
+    Whitespace defines word boundaries. Punctuation is removed when
+    ``rm_punctuation=True``. The result contains ``wer`` and the substitution,
+    deletion, and insertion counts.
+
+    ``rate_mode="normalized"`` is the historical Nlptutti behavior and remains
+    the default for backward compatibility. Use ``rate_mode="standard"`` to
+    divide by the reference word count, which can produce a value greater than
+    1.
+    """
     rate_mode = _resolve_rate_mode(rate_mode)
     unicode_normalization = _resolve_unicode_normalization(unicode_normalization)
     refs = _preprocess_wer_text(reference, rm_punctuation, unicode_normalization)
@@ -287,11 +301,12 @@ def get_crr(
     rate_mode: str = "normalized",
     unicode_normalization: Optional[str] = None,
 ) -> MetricResult:
-    """
-    1 - CER 으로, Character의 error율이 아닌 정답률을 계산
-    :param transcription: 대상 단어로 변환할 소스 문자열
-    :param reference: 소스 단어
-    :return: Boolean
+    """Calculate the rounded character recognition rate for one pair.
+
+    CRR uses the same character preprocessing and alignment as ``get_cer`` and
+    returns ``round(1 - CER, 2)`` with the substitution, deletion, and insertion
+    counts. In ``rate_mode="standard"``, CRR can be negative when CER is greater
+    than 1.
     """
     rate_mode = _resolve_rate_mode(rate_mode)
     unicode_normalization = _resolve_unicode_normalization(unicode_normalization)

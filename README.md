@@ -9,9 +9,32 @@
 예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper, FunASR 같은 음성 인식 도구가 생성한 인식 문장을 같은 기준으로 평가할 수 있습니다. 일반 문자열뿐 아니라 명시된 계약에 맞는 JSON·SRT·TSV 결과도 입력할 수 있습니다.
 정답 문장(reference)과 인식 문장(hypothesis) 사이의 Levenshtein 최소 편집거리에서 치환, 삭제, 삽입 횟수를 계산합니다.
 
+## CER·WER·CRR과 한국어 정규화, 먼저 구분하기
+
+`get_cer`, `get_wer`, `get_crr`는 모두 정답 문장을 첫 번째 인자, STT 결과를 두 번째 인자로 받습니다. 다만 평가 단위와 점수 방향이 다릅니다.
+
+| API | 입력과 반환값 | 선택할 때 | 사용 경계 |
+| --- | --- | --- | --- |
+| `get_cer(reference, transcription)` | 문자열 2개 → `cer`, `substitutions`, `deletions`, `insertions` | 한국어 띄어쓰기 차이를 제외하고 문자 전사 품질을 비교할 때 | 공백을 항상 제거하므로 띄어쓰기 품질은 평가하지 못합니다. 낮을수록 좋습니다. |
+| `get_wer(reference, transcription)` | 문자열 2개 → `wer`, `substitutions`, `deletions`, `insertions` | 공백으로 나뉜 단어와 띄어쓰기 차이까지 품질에 포함할 때 | 서로 다른 토큰화 정책의 결과를 그대로 비교하지 마십시오. 낮을수록 좋습니다. |
+| `get_crr(reference, transcription)` | 문자열 2개 → `crr`, `substitutions`, `deletions`, `insertions` | 문자 품질을 높을수록 좋은 보조 지표로 표시할 때 | 별도 정렬 지표가 아니라 `round(1 - CER, 2)`입니다. `standard` 모드에서는 음수가 될 수 있습니다. |
+
+세 함수 모두 기본적으로 문장부호를 제거하는 `rm_punctuation=True`를 사용합니다. 문장부호도 오류로 평가하려면 `False`를 지정하십시오. 여러 문장을 하나의 점수로 보고할 때는 문장별 결과를 단순 평균하기보다 `evaluate_corpus`의 `micro`와 `macro`를 목적에 맞게 사용합니다.
+
+### 이름이 비슷한 두 정규화 옵션
+
+| 옵션 | 기본값 | 실제 동작 |
+| --- | --- | --- |
+| `rate_mode="normalized"` | 기본 | 삽입 오류를 분모에도 넣는 Nlptutti의 기존 오류율 계산식입니다. **입력 문자열은 바꾸지 않습니다.** |
+| `rate_mode="standard"` | 직접 지정 | 참조 길이를 분모로 쓰는 표준 CER·WER 계산식입니다. 논문, 모델 비교, 외부 벤치마크에 권장합니다. |
+| `unicode_normalization=None` | 기본 | 한글 완성형·조합형을 포함한 입력 문자열을 그대로 평가합니다. |
+| `unicode_normalization="NFC"` | 직접 지정 | Unicode 표현 차이를 평가 전에 정규화합니다. 데이터에 조합형이 섞일 수 있을 때만 사용합니다. |
+
+기존 결과를 재현할 때는 기본 `rate_mode="normalized"`를 유지하십시오. 새 비교 실험에서는 `rate_mode="standard"`를 명시하고, 같은 보고서 안에서 두 방식을 섞지 마십시오.
+
 ## 1분 빠른 시작
 
-처음 사용하는 경우에는 설치 확인, CER·WER 평가, 개체명 보존 평가 순서로 실행하면 됩니다. 아래 예제는 서비스나 모델을 비교할 때 사용하는 표준 계산식인 `rate_mode="standard"`를 명시합니다.
+처음 사용하는 경우에는 설치 확인, CER·WER·CRR 평가, 개체명 보존 평가 순서로 실행하면 됩니다. 아래 예제는 서비스나 모델을 비교할 때 사용하는 표준 계산식인 `rate_mode="standard"`를 명시합니다.
 
 ### 1. 설치 확인
 
@@ -22,7 +45,7 @@ python -c "import nlptutti; print('nlptutti ready')"
 
 `nlptutti ready`가 출력되면 설치와 import가 완료된 것입니다.
 
-### 2. CER·WER 첫 평가
+### 2. CER·WER·CRR 첫 평가
 
 ```python
 import nlptutti as metrics
@@ -32,12 +55,14 @@ hypothesis = "오늘 날씨는 맑습니다"
 
 cer = metrics.get_cer(reference, hypothesis, rate_mode="standard")
 wer = metrics.get_wer(reference, hypothesis, rate_mode="standard")
+crr = metrics.get_crr(reference, hypothesis, rate_mode="standard")
 
-print(round(cer["cer"], 4))  # 0.1111
-print(round(wer["wer"], 4))  # 0.3333
+print(round(cer["cer"], 4), cer["substitutions"])  # 0.1111 1
+print(round(wer["wer"], 4), wer["substitutions"])  # 0.3333 1
+print(crr["crr"], crr["substitutions"])            # 0.89 1
 ```
 
-두 결과 모두 `0.0`이면 정답 문장과 인식 문장이 완전히 일치합니다. 값이 작을수록 오류가 적으며, 이 예제에서는 한 번의 단어 치환이 문자 기준 CER과 단어 기준 WER에 서로 다르게 반영됩니다.
+CER와 WER는 `0.0`, CRR는 `1.0`이면 정답 문장과 인식 문장이 완전히 일치합니다. 세 결과 딕셔너리에는 해당 점수와 `substitutions`, `deletions`, `insertions`가 함께 들어 있습니다. 이 예제에서는 한 번의 치환이 문자 기준 CER와 단어 기준 WER에 서로 다르게 반영됩니다.
 
 ### 3. 개체명 보존 첫 평가
 
@@ -66,7 +91,7 @@ print(report["errors"])               # []
 | 확인 단계 | 기대 결과 | 판정 기준 |
 | --- | --- | --- |
 | 설치 | `nlptutti ready` 출력 | import 오류 없이 패키지를 불러옵니다. |
-| CER·WER | `cer`, `wer`와 편집 횟수 반환 | `0.0`은 완전 일치이며 값이 작을수록 좋습니다. |
+| CER·WER·CRR | `cer`, `wer`, `crr`와 편집 횟수 반환 | CER·WER `0.0`, CRR `1.0`은 완전 일치입니다. |
 | 개체명 | Entity CER, precision·recall·F1, 오류 목록 반환 | 완전 보존 시 Entity CER `0.0`, F1 `1.0`, `errors == []`입니다. |
 
 > 기존 결과를 재현할 때는 옵션을 생략해 기본값인 `rate_mode="normalized"`를 유지하십시오. `normalized` 결과와 `standard` 결과를 같은 표에서 직접 비교하지 마십시오.
@@ -253,9 +278,9 @@ insertions = result['insertions']
 ```
 
 
-### 정규화 방식 선택
+### 오류율 분모 방식 선택
 
-기존 코드와 같은 값이 필요하면 옵션을 생략합니다. 표준 CER/WER를 보고할 때만 <code>rate_mode="standard"</code>를 지정합니다.
+`rate_mode`는 입력 문장을 정규화하는 옵션이 아니라 오류율의 분모를 고르는 옵션입니다. 기존 코드와 같은 값이 필요하면 생략하고, 표준 CER/WER를 보고할 때는 <code>rate_mode="standard"</code>를 지정합니다.
 
 ~~~python
 import nlptutti as metrics

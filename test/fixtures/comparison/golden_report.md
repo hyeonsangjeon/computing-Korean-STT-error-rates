@@ -6,6 +6,7 @@
 - Rate mode: `standard`
 - Remove punctuation: `true`
 - Unicode normalization: `none`
+- Paired bootstrap: `0` resamples, seed `42`, confidence `0.950000`
 
 ## Systems
 
@@ -19,11 +20,11 @@
 Positive CER/WER deltas mean the candidate has a higher error rate. Positive
 CRR deltas mean the candidate has a higher recognition rate.
 
-| Baseline | Candidate | Metric | Micro delta | Macro delta |
-| --- | --- | --- | ---: | ---: |
-| baseline | candidate | CER | -0.500000 | -0.500000 |
-| baseline | candidate | WER | -0.500000 | -0.500000 |
-| baseline | candidate | CRR | 0.500000 | 0.500000 |
+| Baseline | Candidate | Metric | Micro delta | Macro delta | Micro CI |
+| --- | --- | --- | ---: | ---: | --- |
+| baseline | candidate | CER | -0.500000 | -0.500000 | - |
+| baseline | candidate | WER | -0.500000 | -0.500000 | - |
+| baseline | candidate | CRR | 0.500000 | 0.500000 | - |
 
 ## Keyword and entity summaries
 

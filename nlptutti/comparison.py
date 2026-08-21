@@ -33,6 +33,7 @@ from nlptutti.comparison_types import (
     RecognitionMetric,
     SystemMetrics,
 )
+from nlptutti.bootstrap import build_item_statistics, paired_bootstrap_intervals
 from nlptutti.entity_metrics import evaluate_entities
 
 
@@ -224,20 +225,39 @@ def _metric_delta(
     }
 
 
-def _pairwise_results(systems: Sequence[ComparisonSystem]) -> List[PairwiseDelta]:
+def _pairwise_results(
+    systems: Sequence[ComparisonSystem],
+    item_statistics: Mapping[str, Mapping[str, object]],
+    rate_mode: str,
+    bootstrap: int,
+    seed: int,
+    confidence: float,
+) -> List[PairwiseDelta]:
     results = []
     for baseline, candidate in combinations(systems, 2):
+        metrics = {
+            metric_name: _metric_delta(
+                baseline["metrics"][metric_name],
+                candidate["metrics"][metric_name],
+            )
+            for metric_name in ("cer", "wer", "crr")
+        }
+        if bootstrap:
+            intervals = paired_bootstrap_intervals(
+                cast(Mapping[str, object], item_statistics[baseline["id"]]),
+                cast(Mapping[str, object], item_statistics[candidate["id"]]),
+                rate_mode=rate_mode,
+                resamples=bootstrap,
+                seed=seed,
+                confidence=confidence,
+            )
+            for metric_name, interval in intervals.items():
+                metrics[metric_name]["confidence_interval"] = interval
         results.append(
             {
                 "baseline": baseline["id"],
                 "candidate": candidate["id"],
-                "metrics": {
-                    metric_name: _metric_delta(
-                        baseline["metrics"][metric_name],
-                        candidate["metrics"][metric_name],
-                    )
-                    for metric_name in ("cer", "wer", "crr")
-                },
+                "metrics": metrics,
             }
         )
     return results
@@ -254,6 +274,9 @@ def compare_systems(
     keywords: Optional[KeywordInput] = None,
     entities: Optional[KeywordInput] = None,
     entity_aliases: Optional[Mapping[str, Union[str, Sequence[str]]]] = None,
+    bootstrap: int = 0,
+    seed: int = 42,
+    confidence: float = 0.95,
     include_transcripts: bool = False,
 ) -> ComparisonReport:
     """Compare two or more aligned STT outputs without running an STT model.
@@ -268,6 +291,15 @@ def compare_systems(
         raise TypeError("rm_punctuation must be a boolean")
     if not isinstance(include_transcripts, bool):
         raise TypeError("include_transcripts must be a boolean")
+    if isinstance(bootstrap, bool) or not isinstance(bootstrap, int) or bootstrap < 0:
+        raise ValueError("bootstrap must be a non-negative integer")
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise ValueError("seed must be an integer")
+    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+        raise ValueError("confidence must be a number between 0 and 1")
+    confidence = float(confidence)
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be a number between 0 and 1")
     resolved_rate_mode = _resolve_rate_mode(rate_mode)
     resolved_unicode_normalization = _resolve_unicode_normalization(
         unicode_normalization
@@ -280,6 +312,7 @@ def compare_systems(
     )
 
     system_results: List[ComparisonSystem] = []
+    item_statistics = {}
     for system_id, hypotheses in system_values:
         result: ComparisonSystem = {
             "id": system_id,
@@ -310,6 +343,12 @@ def compare_systems(
                 unicode_normalization=resolved_unicode_normalization,
             )
         system_results.append(result)
+        item_statistics[system_id] = build_item_statistics(
+            reference_values,
+            hypotheses,
+            rm_punctuation,
+            resolved_unicode_normalization,
+        )
 
     warnings = []
     report: ComparisonReport = {
@@ -319,9 +358,9 @@ def compare_systems(
             "rate_mode": resolved_rate_mode,
             "rm_punctuation": rm_punctuation,
             "unicode_normalization": resolved_unicode_normalization,
-            "bootstrap_resamples": 0,
-            "bootstrap_seed": 42,
-            "confidence": 0.95,
+            "bootstrap_resamples": bootstrap,
+            "bootstrap_seed": seed,
+            "confidence": confidence,
             "diagnostic_profile": None,
         },
         "dataset": {
@@ -330,7 +369,14 @@ def compare_systems(
             "references_sha256": _fingerprint(reference_values),
         },
         "systems": system_results,
-        "pairwise": _pairwise_results(system_results),
+        "pairwise": _pairwise_results(
+            system_results,
+            item_statistics,
+            resolved_rate_mode,
+            bootstrap,
+            seed,
+            confidence,
+        ),
         "warnings": warnings,
     }
     if include_transcripts:

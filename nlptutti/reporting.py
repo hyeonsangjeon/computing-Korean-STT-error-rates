@@ -66,23 +66,34 @@ def _system_table(report: ComparisonReport) -> str:
 
 def _pairwise_table(report: ComparisonReport) -> str:
     lines = [
-        "| Baseline | Candidate | Metric | Micro delta | Macro delta |",
-        "| --- | --- | --- | ---: | ---: |",
+        "| Baseline | Candidate | Metric | Micro delta | Macro delta | Micro CI |",
+        "| --- | --- | --- | ---: | ---: | --- |",
     ]
     for comparison in report["pairwise"]:
         for metric_name in ("cer", "wer", "crr"):
             delta = comparison["metrics"][metric_name]
+            interval = delta.get("confidence_interval")
+            interval_text = (
+                "[{lower}, {upper}] ({confidence})".format(
+                    lower=_format_number(interval["lower"]),
+                    upper=_format_number(interval["upper"]),
+                    confidence=_format_number(interval["confidence"]),
+                )
+                if interval is not None
+                else "-"
+            )
             lines.append(
-                "| {baseline} | {candidate} | {metric} | {micro} | {macro} |".format(
+                "| {baseline} | {candidate} | {metric} | {micro} | {macro} | {interval} |".format(
                     baseline=comparison["baseline"].replace("|", "\\|"),
                     candidate=comparison["candidate"].replace("|", "\\|"),
                     metric=metric_name.upper(),
                     micro=_format_number(delta["micro"]),
                     macro=_format_number(delta["macro"]),
+                    interval=interval_text,
                 )
             )
     if len(lines) == 2:
-        lines.append("| - | - | - | - | - |")
+        lines.append("| - | - | - | - | - | - |")
     return "\n".join(lines)
 
 
@@ -143,6 +154,7 @@ def render_comparison_markdown(report: ComparisonReport) -> str:
 - Rate mode: `{rate_mode}`
 - Remove punctuation: `{rm_punctuation}`
 - Unicode normalization: `{unicode_normalization}`
+- Paired bootstrap: `{bootstrap_resamples}` resamples, seed `{bootstrap_seed}`, confidence `{confidence}`
 
 ## Systems
 
@@ -178,6 +190,9 @@ CRR deltas mean the candidate has a higher recognition rate.
         unicode_normalization=(
             options["unicode_normalization"] or "none"
         ),
+        bootstrap_resamples=options["bootstrap_resamples"],
+        bootstrap_seed=options["bootstrap_seed"],
+        confidence=_format_number(options["confidence"]),
         system_table=_system_table(report),
         pairwise_table=_pairwise_table(report),
         optional_summaries=_optional_summaries(report),

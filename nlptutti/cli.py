@@ -105,6 +105,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="include raw reference and hypothesis text in the JSON report",
     )
+    compare.add_argument(
+        "--bootstrap",
+        type=int,
+        default=0,
+        metavar="N",
+        help="paired bootstrap resamples; 0 disables confidence intervals",
+    )
+    compare.add_argument("--seed", type=int, default=42)
+    compare.add_argument("--confidence", type=float, default=0.95)
     return parser
 
 
@@ -123,6 +132,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             rm_punctuation=not arguments.keep_punctuation,
             rate_mode=arguments.rate_mode,
             unicode_normalization=arguments.unicode_normalization,
+            bootstrap=arguments.bootstrap,
+            seed=arguments.seed,
+            confidence=arguments.confidence,
             include_transcripts=arguments.include_transcripts,
         )
         serialized = render_comparison_json(report)

@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Nlptutti와 Python 버전
-      placeholder: nlptutti 0.0.0.19 / Python 3.12
+      placeholder: nlptutti 0.0.0.20 / Python 3.12
     validations:
       required: true
   - type: dropdown

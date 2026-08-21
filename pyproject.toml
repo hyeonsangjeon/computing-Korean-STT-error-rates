@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.19"
+version = "0.0.0.20"
 description = "Korean STT CER, WER, and CRR metrics with explicit normalization and reproducible reports"
 readme = "README.md"
 license = {text = "MIT"}

@@ -2,6 +2,44 @@
 
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
+## [0.0.0.20] - 2026-08-21
+
+---
+
+### Added
+- 두 개 이상 STT 시스템의 정렬된 출력에서 CER·WER·CRR micro/macro와 pairwise delta를 계산하는 `compare_systems` 공개 API 추가.
+- ID mapping 또는 순서 기반 corpus JSON을 받아 비교 결과를 출력하는 `nlptutti compare` CLI 추가.
+- 자동화용 `nlptutti.comparison/1.0` JSON과 검토용 Markdown을 결정적으로 생성하고 원자적으로 저장하는 결과 번들 API 추가.
+- 문장 쌍을 유지하는 percentile paired bootstrap CER·WER delta 신뢰구간 추가. 기본값 `bootstrap=0`은 비활성.
+- Microsoft Azure Speech short-audio simple 응답과 오픈소스 OpenAI Whisper `transcribe()` 결과를 읽는 명시적 provider adapter 추가.
+- 띄어쓰기 경계, 숫자·단위, 조사·어미 인접 치환, 상위 문자 편집을 분리하는 opt-in `korean-v1` 진단 프로필 추가.
+- 공개 비교 결과 `TypedDict`, `py.typed`, comparison schema 문서와 공급자·진단·비교 매뉴얼 추가.
+- 기여, 인용, 비공개 보안 제보 정책과 provider·metric·문서 Issue Form 추가.
+
+### Changed
+- `explain_errors`와 개체명 평가의 중복 full-matrix backtrace를 동일한 tie-breaking과 위치 계약을 보존하는 공용 alignment 커널로 통합.
+- README와 PyPI 첫 화면을 설치, 단일 CER, 두 시스템 비교, JSON/Markdown 저장 순서로 단축하고 같은 fixture의 기대값을 CI에서 검증.
+- wheel smoke가 `py.typed`, console script help, 비교 API와 실제 CLI 번들 생성을 source tree 밖에서 검사하도록 강화.
+- sdist에 전체 `docs/`, example corpus, 중첩 test fixture가 포함되도록 manifest 범위를 보강.
+
+### Compatibility
+- `get_cer`, `get_wer`, `get_crr`와 기존 공개 API의 인자 순서, 반환 키, `rate_mode="normalized"`, `rm_punctuation=True`, `unicode_normalization=None` 기본값을 유지.
+- 비교 API의 bootstrap과 한국어 진단, 원문 포함은 모두 명시적으로 선택할 때만 활성화.
+- Beta classifier를 유지하고 `0.1.0` 선언은 comparison schema와 CLI가 최소 두 patch release에서 검증될 때까지 보류.
+
+### Security
+- 비교 보고서에서 원문을 기본 제외하고 fingerprint만 기록하며, 진단 토큰 또는 원문 opt-in 사용 시 공유 전 검토 경고를 제공.
+- 실제 사용자 transcript를 공개 issue fixture로 올리지 않는 정책과 GitHub private vulnerability report 경로 추가.
+
+### Tests
+- comparison 입력 정렬·schema·CLI, JSON/Markdown golden, paired bootstrap, alignment exhaustive small-input, provider malformed input, 한국어 진단 오탐 경계 테스트 추가.
+- Python 3.8~3.14 CI에서 wheel/sdist, metadata, 깨끗한 wheel 설치와 README 첫 실행 경로를 계속 검증.
+
+### Known limitations
+- provider 자동 감지, Azure detailed/batch/fast, OpenAI API, AWS·Google·FunASR 전용 adapter는 이번 릴리스 범위가 아님.
+- 숫자·단위와 조사·어미 진단은 형태소 분석이 아닌 experimental 문자열 휴리스틱.
+- paired bootstrap은 주어진 평가 corpus의 문장 sampling 변동을 나타내며 모델 정확도의 보편적 확률 보장이 아님.
+
 ## [0.0.0.19] - 2026-08-13
 
 ---

@@ -23,8 +23,8 @@ python -m pip install -U nlptutti
 python -c "import nlptutti; print('nlptutti ready')"
 ```
 
-성공하면 `nlptutti ready`가 출력됩니다. Python 3.8부터 3.14까지 CI에서
-테스트합니다.
+성공하면 `nlptutti ready`가 출력됩니다. Python 3.8부터 3.14까지의 환경을
+CI에서 테스트합니다.
 
 ### 2. 한 문장 평가
 
@@ -69,9 +69,9 @@ for system in report["systems"]:
 # candidate 0.0 0.0
 ```
 
-`micro`는 전체 편집 횟수를 합산한 코퍼스 점수이고 `macro`는 문장별 점수의
-단순 평균입니다. 논문이나 모델 벤치마크에는 보통 `rate_mode="standard"`와
-`micro`를 우선 사용합니다.
+`micro`는 코퍼스 전체의 편집 횟수를 합산한 점수이고, `macro`는 문장별 점수의
+단순 평균입니다. 논문이나 모델 벤치마크에서는 보통 `rate_mode="standard"`와
+`micro`를 먼저 봅니다.
 
 ### 4. JSON과 Markdown으로 저장
 
@@ -92,15 +92,15 @@ comparison-report/report.json
 comparison-report/report.md
 ```
 
-`report.json`은 자동화용 versioned schema이고 `report.md`는 사람이 검토하는
-표입니다. 같은 입력, 옵션, 패키지 버전에서는 결정적으로 같은 내용을
-생성합니다. 원문은 기본 보고서에 포함되지 않으며 명시적으로
-`include_transcripts=True` 또는 `--include-transcripts`를 선택해야 들어갑니다.
+`report.json`은 자동화에서 읽는 버전 스키마이고, `report.md`는 사람이 검토할
+표입니다. 입력, 옵션, 패키지 버전이 같으면 실행할 때마다 같은 내용을 만듭니다.
+원문은 기본 보고서에서 빠지며 `include_transcripts=True` 또는
+`--include-transcripts`를 직접 선택해야 포함됩니다.
 
-전체 입력 계약, 오류 처리, paired bootstrap과 결과 해석은
-[시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)을 참조하십시오.
+입력 형식, 오류 처리, paired bootstrap과 결과 해석은
+[시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
 
-## 기본값을 먼저 확인하십시오
+## 기본값부터 확인하기
 
 기존 사용자 결과를 바꾸지 않기 위해 정규화 관련 기본값은 그대로 유지합니다.
 
@@ -112,7 +112,7 @@ comparison-report/report.md
 | `unicode_normalization` | `None` | Unicode 표현을 그대로 둡니다. 조합형 혼입을 정리할 때만 `"NFC"` 등을 지정합니다. |
 
 기존 결과를 재현할 때는 기본 `normalized`를 유지하고, 새 공식 비교에서는
-`standard`를 명시하십시오. 두 모드의 숫자를 같은 열에서 직접 비교하면 안
+`standard`를 직접 지정합니다. 두 모드의 숫자는 같은 열에서 비교하면 안
 됩니다.
 
 ## 어떤 함수를 선택할까
@@ -123,7 +123,7 @@ comparison-report/report.md
 | 단어·띄어쓰기 포함 품질 | `get_wer` | 낮을수록 좋습니다. 시스템 간 토큰화 정책을 같게 맞춰야 합니다. |
 | 높을수록 좋은 문자 지표 | `get_crr` | `round(1 - CER, 2)`인 보조 지표입니다. 독립 정렬 점수가 아닙니다. |
 | 여러 문장 micro/macro | `evaluate_corpus` | 같은 길이의 reference와 hypothesis 목록이 필요합니다. |
-| 두 개 이상 시스템 비교 | `compare_systems` | 정렬된 입력, 시스템별 점수, pairwise delta를 반환합니다. |
+| 둘 이상의 시스템 비교 | `compare_systems` | 정렬된 입력, 시스템별 점수, pairwise delta를 반환합니다. |
 | 핵심어 누락·오탐 | `evaluate_keywords` | 제공한 키워드 사전의 precision, recall, F1을 계산합니다. |
 | 개체명 구간 품질 | `evaluate_entities` | 제공한 개체명 사전의 Entity CER와 언급 F1을 계산합니다. NER 모델은 아닙니다. |
 | 오류 원인 확인 | `explain_errors` | 문자 또는 단어 정렬과 상위 치환·삭제·삽입을 반환합니다. |
@@ -133,8 +133,8 @@ comparison-report/report.md
 
 ### Paired bootstrap 신뢰구간
 
-문장 단위로 짝을 유지한 percentile bootstrap을 켜면 pairwise CER/WER delta의
-신뢰구간을 함께 기록합니다. 기본값 `bootstrap=0`은 비활성입니다.
+문장 쌍을 유지한 채 percentile bootstrap을 실행하면 pairwise CER/WER delta의
+신뢰구간도 보고서에 남습니다. 기본값 `bootstrap=0`에서는 실행하지 않습니다.
 
 ```python
 report = metrics.compare_systems(
@@ -149,26 +149,26 @@ report = metrics.compare_systems(
 
 ### 한국어 오류 진단
 
-`diagnostic_profile="korean-v1"`을 직접 지정하면 띄어쓰기 경계, 숫자·단위,
-조사·어미 인접 치환, 상위 문자 편집을 별도 진단으로 추가합니다. 전체
-CER/WER를 바꾸지 않으며 기본값은 `None`입니다. 숫자·단위와 조사·어미 규칙은
-형태소 분석이 아닌 experimental 휴리스틱입니다.
+`diagnostic_profile="korean-v1"`을 지정하면 띄어쓰기 경계, 숫자·단위,
+조사·어미 인접 치환, 상위 문자 편집을 따로 보여 줍니다. 전체 CER/WER에는
+영향을 주지 않으며 기본값은 `None`입니다. 숫자·단위와 조사·어미 규칙은
+형태소 분석이 아닌 experimental 단계의 휴리스틱입니다.
 
-자세한 규칙과 오분류 경계는 [한국어 오류 진단 프로필](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/korean-diagnostics.md)을
-확인하십시오.
+자세한 규칙과 오분류 가능성은 [한국어 오류 진단 프로필](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/korean-diagnostics.md)에
+정리했습니다.
 
-### 저장된 공급자 JSON
+### STT 도구별 JSON 읽기
 
-`parse_provider_transcript()`는 네트워크나 SDK 없이 저장된 JSON만 읽습니다.
-현재 명시적으로 검증한 범위는 다음 두 가지입니다.
+`parse_provider_transcript()`는 네트워크나 SDK를 사용하지 않고 저장된 JSON만
+읽습니다. 현재 테스트로 확인한 형식은 다음 두 가지입니다.
 
 - Microsoft Azure Speech short-audio REST `simple` 성공 응답
 - 오픈소스 `openai/whisper`의 `transcribe()` 반환 구조
 
-공급자와 schema version을 반드시 지정하며 자동 감지하지 않습니다. Azure의
-다른 REST 형식, OpenAI API, AWS, Google, FunASR 전용 형식을 지원한다고
-간주하면 안 됩니다. 일반 text/JSON/SRT/TSV는 공급자 중립
-`parse_transcript()`로 평가할 수 있습니다.
+공급자와 schema version은 반드시 직접 지정해야 하며 자동으로 감지하지
+않습니다. Azure의 다른 REST 형식, OpenAI API, AWS, Google, FunASR 전용 형식은
+현재 지원 범위에 포함되지 않습니다. 일반 text/JSON/SRT/TSV는 특정 공급자에
+종속되지 않는 `parse_transcript()`로 평가할 수 있습니다.
 
 지원 필드와 공식 출처는 [공급자 출력 어댑터](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/provider-adapters.md)에
 정리했습니다.
@@ -199,7 +199,7 @@ normalized: (S + D + I) / (S + D + I + C)
 ```
 
 구현은 Levenshtein 최소 편집거리를 사용합니다. backtrace가 필요한 오류 설명과
-개체명 평가는 같은 결정적 tie-breaking 정렬 커널을 공유합니다.
+개체명 평가는 동률일 때 선택 순서가 고정된 같은 정렬 커널을 사용합니다.
 
 ## 관련 논문과 공개 구현
 
@@ -213,7 +213,8 @@ normalized: (S + D + I) / (S + D + I + C)
 - [PIER](https://github.com/enesyugan/PIER-CodeSwitching-Evaluation)
 
 `evaluate_entities()`는 위 구현을 포팅한 코드가 아닙니다. 공통 평가 원칙을
-한국어 문자 span과 명시적 alias 정책에 맞춰 독립 구현했으며 차이는
+한국어 문자 span과 `aliases`로 직접 지정하는 별칭 정책에 맞춰 독립 구현했으며
+차이는
 [`test_entity_reference_implementations.py`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/test_entity_reference_implementations.py)에
 고정했습니다.
 

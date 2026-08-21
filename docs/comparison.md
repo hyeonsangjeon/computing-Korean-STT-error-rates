@@ -1,7 +1,7 @@
 # STT 시스템 비교와 결과 번들
 
-`compare_systems()`는 이미 생성된 두 개 이상 STT 시스템의 출력과 reference를
-문장 단위로 맞춰 CER, WER, CRR을 계산합니다. 오디오를 읽거나 STT 모델을
+`compare_systems()`는 이미 생성된 둘 이상의 STT 출력과 reference를 문장별로
+맞춰 CER, WER, CRR을 계산합니다. 오디오를 읽거나 STT 모델을
 실행하지 않습니다.
 
 ## 가장 작은 비교
@@ -31,7 +31,7 @@ candidate에서 baseline을 뺀 pairwise CER micro delta는 `-0.235294...`입니
 CER/WER delta가 음수면 candidate의 오류율이 더 낮고, CRR delta가 양수면
 candidate의 정답률이 더 높습니다.
 
-## 입력 정렬 계약
+## 입력을 맞추는 규칙
 
 순서 기반 입력은 모든 목록의 길이가 같아야 합니다.
 
@@ -43,8 +43,8 @@ systems = {
 }
 ```
 
-ID 기반 입력은 reference와 모든 시스템이 정확히 같은 ID 집합을 가져야 합니다.
-mapping 순서가 달라도 reference의 ID 순서로 정렬합니다.
+ID 기반 입력은 reference와 모든 시스템의 ID 집합이 정확히 같아야 합니다.
+mapping 순서가 달라도 결과는 reference의 ID 순서에 맞춥니다.
 
 ```python
 references = {"utt-2": "문장 2", "utt-1": "문장 1"}
@@ -59,9 +59,9 @@ systems = {
 
 ## CLI 입력과 저장
 
-CLI JSON은 `references`와 시스템 ID별 `systems`가 필요합니다. 값은 문자열
-목록, ID-to-text object 또는 `{"id": ..., "text": ...}` object 목록일 수
-있습니다.
+CLI JSON에는 `references`와 시스템 ID별 `systems`가 필요합니다. 값에는 문자열
+목록, ID를 key로 두고 문장을 value로 둔 object 또는
+`{"id": ..., "text": ...}` object 목록을 쓸 수 있습니다.
 
 ```bash
 nlptutti compare examples/comparison_input.json \
@@ -86,7 +86,7 @@ nlptutti compare examples/comparison_input.json \
 | `bootstrap` | `0` | paired bootstrap을 끕니다. 양의 정수로 켭니다. |
 | `seed` | `42` | bootstrap 난수 seed입니다. |
 | `confidence` | `0.95` | percentile 신뢰구간의 confidence입니다. |
-| `diagnostic_profile` | `None` | 한국어 진단을 끕니다. 현재 명시적 값은 `"korean-v1"`입니다. |
+| `diagnostic_profile` | `None` | 한국어 진단을 끕니다. 켜려면 `"korean-v1"`을 지정합니다. |
 
 기본값을 변경하지 않으므로 기존 API 결과는 그대로 유지됩니다. 보고서의
 `options`에는 실제 적용한 모든 값이 기록됩니다.
@@ -104,11 +104,11 @@ report = metrics.compare_systems(
 )
 ```
 
-reference 문장을 sampling unit으로 사용하고 각 resample에서 모든 시스템의
-같은 문장 ID를 함께 뽑습니다. CER/WER micro delta의 percentile 신뢰구간을
-반환하며, 시스템별 독립 bootstrap이 아닙니다. 한 문장뿐인 corpus에서는
-bootstrap을 켤 수 없습니다. 이 구간은 모델 정확도의 보편적 확률 보장이 아니라
-주어진 평가 corpus의 문장 sampling 변동을 나타냅니다.
+reference 문장을 sampling unit으로 삼고, 표본을 다시 뽑을 때 모든 시스템에서
+같은 문장 ID를 함께 선택합니다. 반환값은 CER/WER micro delta의 percentile
+신뢰구간이며 시스템마다 따로 bootstrap하지 않습니다. corpus가 한 문장뿐이면
+bootstrap을 켤 수 없습니다. 이 구간은 모델 정확도 자체의 보편적인 확률을
+뜻하지 않고, 현재 평가 corpus를 다시 표집할 때 생기는 점수 변동을 보여 줍니다.
 
 ## 키워드, 개체명, 한국어 진단
 
@@ -122,12 +122,12 @@ report = metrics.compare_systems(
 )
 ```
 
-keyword recall/false positive와 Entity CER/F1은 기존 공개 평가 함수를 그대로
-호출합니다. `korean-v1`의 spacing, number/unit, josa/eomi, top edit는 별도
-`diagnostics`에 들어가며 CER/WER를 변경하지 않습니다. 규칙의 버전과
-experimental 상태는 [한국어 진단 문서](korean-diagnostics.md)를 확인하십시오.
+keyword recall/false positive와 Entity CER/F1은 기존 공개 평가 함수로
+계산합니다. `korean-v1`의 spacing, number/unit, josa/eomi, top edit는
+`diagnostics`에 따로 들어가며 CER/WER를 바꾸지 않습니다. 규칙의 버전과
+experimental 상태는 [한국어 진단 문서](korean-diagnostics.md)에 정리했습니다.
 
-## 결정성과 개인정보
+## 재현성과 개인정보
 
 - JSON key는 정렬하고 유한한 값만 허용합니다.
 - Markdown 숫자는 고정 형식으로 출력합니다.
@@ -137,8 +137,8 @@ experimental 상태는 [한국어 진단 문서](korean-diagnostics.md)를 확�
 - 한국어 진단의 상위 편집에는 관측된 문자 조각이 포함될 수 있습니다.
 - 원문이 필요할 때만 `include_transcripts=True`를 명시하고 공유 전에 검토합니다.
 
-`write_comparison_bundle()`은 각 파일을 임시 경로에 완성한 뒤 교체하므로 중간
-내용이 최종 파일로 남는 위험을 줄입니다.
+`write_comparison_bundle()`은 각 파일을 임시 경로에 먼저 완성한 뒤 교체합니다.
+따라서 쓰다 만 내용이 최종 파일에 남을 가능성이 줄어듭니다.
 
 ## Python에서 직접 저장
 
@@ -156,4 +156,4 @@ print(paths["markdown"])
 
 구조의 필수·선택 필드는 [비교 schema 문서](comparison-schema.md)에 정리되어
 있습니다. JSON·SRT·TSV 하나를 평가 여권으로 남기는 방법은
-[구조화 transcript 문서](structured-transcripts.md)를 참조하십시오.
+[구조화 transcript 문서](structured-transcripts.md)에서 볼 수 있습니다.

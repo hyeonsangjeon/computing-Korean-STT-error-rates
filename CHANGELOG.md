@@ -15,6 +15,7 @@
 - 띄어쓰기 경계, 숫자·단위, 조사·어미 인접 치환, 상위 문자 편집을 분리하는 opt-in `korean-v1` 진단 프로필 추가.
 - 공개 비교 결과 `TypedDict`, `py.typed`, comparison schema 문서와 공급자·진단·비교 매뉴얼 추가.
 - 기여, 인용, 비공개 보안 제보 정책과 provider·metric·문서 Issue Form 추가.
+- 릴리스 직전 GitHub 14일 traffic, PyPIStats 일별·30일, 공개 code search를 분리한 채택 기준선과 30·60·90일 검토 템플릿 추가.
 
 ### Changed
 - `explain_errors`와 개체명 평가의 중복 full-matrix backtrace를 동일한 tie-breaking과 위치 계약을 보존하는 공용 alignment 커널로 통합.

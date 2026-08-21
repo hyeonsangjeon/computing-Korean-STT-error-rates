@@ -182,6 +182,7 @@ CER/WER를 바꾸지 않으며 기본값은 `None`입니다. 숫자·단위와 �
 - [한국어 오류 진단](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/korean-diagnostics.md)
 - [Azure Speech·Whisper 출력 어댑터](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/provider-adapters.md)
 - [정렬 커널과 성능 기준선](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/alignment-performance.md)
+- [공개 채택 지표 기준선과 30·60·90일 검토](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/adoption-baseline.md)
 
 이 패키지를 만든 배경과 한국어 ASR/STT 평가 실험은
 [한국어 프롤로그](https://hyeonsangjeon.github.io/job-transcribe/)와

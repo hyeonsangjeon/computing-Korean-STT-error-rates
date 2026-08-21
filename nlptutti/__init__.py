@@ -23,6 +23,7 @@ from nlptutti.transcript_io import (
     evaluate_transcript,
     parse_transcript,
 )
+from nlptutti.provider_io import parse_provider_transcript
 
 __all__ = [
     "COMPLEX_EOMI",
@@ -41,6 +42,7 @@ __all__ = [
     "get_crr",
     "get_wer",
     "make_keyword_pattern",
+    "parse_provider_transcript",
     "parse_transcript",
     "render_comparison_json",
     "render_comparison_markdown",

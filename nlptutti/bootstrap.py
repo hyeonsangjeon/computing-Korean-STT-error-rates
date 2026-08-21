@@ -114,7 +114,7 @@ def paired_bootstrap_intervals(
             )
 
     random_generator = random.Random(seed)
-    deltas = {"cer": [], "wer": []}
+    deltas: Dict[str, List[float]] = {"cer": [], "wer": []}
     for _ in range(resamples):
         indices = [random_generator.randrange(item_count) for _ in range(item_count)]
         for metric_name in ("cer", "wer"):
@@ -124,7 +124,7 @@ def paired_bootstrap_intervals(
 
     lower_probability = (1 - confidence) / 2
     upper_probability = 1 - lower_probability
-    result = {}
+    result: Dict[str, ConfidenceInterval] = {}
     for metric_name, values in deltas.items():
         values.sort()
         result[metric_name] = {

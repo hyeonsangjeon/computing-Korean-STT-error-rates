@@ -1,6 +1,8 @@
 """Deterministic renderers for comparison reports."""
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Dict, Mapping, Union, cast
 
@@ -45,6 +47,29 @@ def _format_number(value: Union[int, float]) -> str:
     return format(value, ".6f")
 
 
+def _table_text(value: object) -> str:
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("|", "\\|")
+        .replace("\r", " ")
+        .replace("\n", " ")
+    )
+
+
+def _inline_code(value: object) -> str:
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    fence = "`"
+    while fence in text:
+        fence += "`"
+    padding = " " if text.startswith("`") or text.endswith("`") else ""
+    return "{fence}{padding}{text}{padding}{fence}".format(
+        fence=fence,
+        padding=padding,
+        text=text,
+    )
+
+
 def _system_table(report: ComparisonReport) -> str:
     lines = [
         "| System | CER micro | CER macro | WER micro | WER macro | CRR micro | CRR macro |",
@@ -55,7 +80,7 @@ def _system_table(report: ComparisonReport) -> str:
         lines.append(
             "| {system_id} | {cer_micro} | {cer_macro} | {wer_micro} | "
             "{wer_macro} | {crr_micro} | {crr_macro} |".format(
-                system_id=system["id"].replace("|", "\\|"),
+                system_id=_table_text(system["id"]),
                 cer_micro=_format_number(metrics["cer"]["micro"]),
                 cer_macro=_format_number(metrics["cer"]["macro"]),
                 wer_micro=_format_number(metrics["wer"]["micro"]),
@@ -87,8 +112,8 @@ def _pairwise_table(report: ComparisonReport) -> str:
             )
             lines.append(
                 "| {baseline} | {candidate} | {metric} | {micro} | {macro} | {interval} |".format(
-                    baseline=comparison["baseline"].replace("|", "\\|"),
-                    candidate=comparison["candidate"].replace("|", "\\|"),
+                    baseline=_table_text(comparison["baseline"]),
+                    candidate=_table_text(comparison["candidate"]),
                     metric=metric_name.upper(),
                     micro=_format_number(delta["micro"]),
                     macro=_format_number(delta["macro"]),
@@ -107,8 +132,8 @@ def _optional_summaries(report: ComparisonReport) -> str:
             summary = cast(Mapping[str, object], system["keywords"])["summary"]
             summary = cast(Mapping[str, Union[int, float]], summary)
             lines.append(
-                "- `{}` keywords: recall={}, false positives={}".format(
-                    system["id"],
+                "- {} keywords: recall={}, false positives={}".format(
+                    _inline_code(system["id"]),
                     _format_number(summary["recall"]),
                     _format_number(summary["false_positives"]),
                 )
@@ -118,17 +143,13 @@ def _optional_summaries(report: ComparisonReport) -> str:
             summary = cast(Mapping[str, Union[int, float]], entities["summary"])
             entity_cer = cast(Mapping[str, Union[int, float]], entities["entity_cer"])
             lines.append(
-                "- `{}` entities: F1={}, entity CER micro={}".format(
-                    system["id"],
+                "- {} entities: F1={}, entity CER micro={}".format(
+                    _inline_code(system["id"]),
                     _format_number(summary["f1"]),
                     _format_number(entity_cer["micro"]),
                 )
             )
     return "\n".join(lines) if lines else "- No keyword or entity evaluation requested."
-
-
-def _table_text(value: object) -> str:
-    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
 
 
 def _top_substitutions(diagnostics: Mapping[str, object]) -> str:
@@ -251,9 +272,27 @@ CRR deltas mean the candidate has a higher recognition rate.
 
 
 def _write_atomic(path: Path, content: str) -> None:
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(content, encoding="utf-8")
-    temporary.replace(path)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            prefix=".{}-".format(path.name),
+            suffix=".tmp",
+            dir=str(path.parent),
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            stream.write(content)
+        os.replace(str(temporary), str(path))
+    except BaseException:
+        if temporary is not None:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+        raise
 
 
 def write_comparison_bundle(

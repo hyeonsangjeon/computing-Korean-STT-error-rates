@@ -4,6 +4,7 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import (
+    Counter as CounterType,
     Dict,
     Iterable,
     List,
@@ -29,7 +30,7 @@ from nlptutti.asr_metrics import (
     _resolve_rate_mode,
     _resolve_unicode_normalization,
 )
-from nlptutti.alignment import align_sequences
+from nlptutti.alignment import EditOp, align_sequences
 
 
 _MENTION_COUNT_NAMES = (
@@ -76,7 +77,7 @@ class _EntityOccurrence:
 @dataclass
 class _OccurrenceScore:
     counts: Dict[str, int] = field(default_factory=_empty_character_counts)
-    alignment: List[Dict[str, object]] = field(default_factory=list)
+    alignment: List[EditOp] = field(default_factory=list)
 
 
 def _compact_surface(surface: str) -> str:
@@ -114,7 +115,7 @@ def _prepare_aliases(
     aliases: Optional[Mapping[str, Union[str, Sequence[str]]]],
     unicode_normalization: Optional[str],
 ) -> Dict[str, List[str]]:
-    aliases_by_entity = {name: [] for name, _ in entries}
+    aliases_by_entity: Dict[str, List[str]] = {name: [] for name, _ in entries}
     if aliases is None:
         return aliases_by_entity
     if not isinstance(aliases, Mapping):
@@ -249,8 +250,8 @@ def _canonicalize_mentions(
 ) -> Tuple[str, List[_EntityOccurrence]]:
     normalized_text = _normalize_unicode(text, unicode_normalization)
     candidates = _select_entity_candidates(normalized_text, definitions)
-    pieces = []
-    occurrences = []
+    pieces: List[str] = []
+    occurrences: List[_EntityOccurrence] = []
     source_cursor = 0
     output_length = 0
 
@@ -291,15 +292,15 @@ def _preprocess_with_offsets(text: str, rm_punctuation: bool) -> Tuple[str, List
 
 def _align_with_indices(
     reference: Sequence[str], hypothesis: Sequence[str]
-) -> List[Dict[str, object]]:
+) -> List[EditOp]:
     return list(align_sequences(reference, hypothesis))
 
 
 def _map_occurrence_tokens(
     occurrences: Sequence[_EntityOccurrence], offsets: Sequence[int]
 ) -> Tuple[Dict[int, int], List[Tuple[int, int, int]]]:
-    token_to_occurrence = {}
-    intervals = []
+    token_to_occurrence: Dict[int, int] = {}
+    intervals: List[Tuple[int, int, int]] = []
     for occurrence_index, occurrence in enumerate(occurrences):
         token_indices = [
             token_index
@@ -329,7 +330,9 @@ def _group_occurrences(
     definitions: Sequence[_EntityDefinition],
     occurrences: Sequence[_EntityOccurrence],
 ) -> Dict[str, List[_EntityOccurrence]]:
-    grouped = {definition.name: [] for definition in definitions}
+    grouped: Dict[str, List[_EntityOccurrence]] = {
+        definition.name: [] for definition in definitions
+    }
     for occurrence in occurrences:
         grouped[occurrence.name].append(occurrence)
     return grouped
@@ -340,7 +343,7 @@ def _measure_mentions(
     reference_groups: Mapping[str, Sequence[_EntityOccurrence]],
     hypothesis_groups: Mapping[str, Sequence[_EntityOccurrence]],
 ) -> Dict[str, Dict[str, int]]:
-    result = {}
+    result: Dict[str, Dict[str, int]] = {}
     for definition in definitions:
         name = definition.name
         reference_count = len(reference_groups[name])
@@ -403,7 +406,7 @@ def _make_reference_error(
 ) -> Dict[str, object]:
     reference = "".join(item["reference"] for item in score.alignment)
     hypothesis = "".join(item["hypothesis"] for item in score.alignment)
-    result = {
+    result: Dict[str, object] = {
         "sentence_index": sentence_index,
         "type": "omission" if not hypothesis else "misrecognition",
         "entity": occurrence.name,
@@ -430,7 +433,7 @@ def _score_reference_occurrences(
     Dict[str, Dict[str, int]],
     List[float],
     List[Tuple[int, int, Dict[str, object]]],
-    Counter,
+    CounterType[str],
 ]:
     processed_reference, reference_offsets = _preprocess_with_offsets(
         canonical_reference, rm_punctuation
@@ -444,12 +447,12 @@ def _score_reference_occurrences(
         reference_occurrences,
         reference_offsets,
     )
-    character_counts = {
+    character_counts: Dict[str, Dict[str, int]] = {
         definition.name: _empty_character_counts() for definition in definitions
     }
-    occurrence_rates = []
-    errors = []
-    reported_errors = Counter()
+    occurrence_rates: List[float] = []
+    errors: List[Tuple[int, int, Dict[str, object]]] = []
+    reported_errors: CounterType[str] = Counter()
 
     for occurrence, score in zip(reference_occurrences, scores):
         _merge_counts(character_counts[occurrence.name], score.counts)
@@ -604,9 +607,11 @@ def _build_entity_results(
     rate_mode: str,
     is_labeled: bool,
 ) -> Dict[str, Dict[str, object]]:
-    results = {}
+    results: Dict[str, Dict[str, object]] = {}
     for definition in definitions:
-        statistics = _build_keyword_statistics(**mention_counts[definition.name])
+        statistics: Dict[str, object] = dict(
+            _build_keyword_statistics(**mention_counts[definition.name])
+        )
         statistics.update(
             _character_statistics(character_counts[definition.name], rate_mode)
         )
@@ -632,18 +637,20 @@ def _build_label_results(
     character_counts: Mapping[str, Mapping[str, int]],
     rate_mode: str,
 ) -> Dict[str, Dict[str, object]]:
-    label_mentions = {}
-    label_characters = {}
+    label_mentions: Dict[str, Dict[str, int]] = {}
+    label_characters: Dict[str, Dict[str, int]] = {}
     for definition in definitions:
         label = definition.label
+        if label is None:
+            raise RuntimeError("labeled entities must have a label")
         label_mentions.setdefault(label, _empty_mention_counts())
         label_characters.setdefault(label, _empty_character_counts())
         _merge_counts(label_mentions[label], mention_counts[definition.name])
         _merge_counts(label_characters[label], character_counts[definition.name])
 
-    results = {}
+    results: Dict[str, Dict[str, object]] = {}
     for label, counts in label_mentions.items():
-        statistics = _build_keyword_statistics(**counts)
+        statistics: Dict[str, object] = dict(_build_keyword_statistics(**counts))
         statistics.update(_character_statistics(label_characters[label], rate_mode))
         results[label] = statistics
     return results
@@ -676,7 +683,7 @@ def _build_final_result(
         **{name: character_statistics[name] for name in _CHARACTER_COUNT_NAMES},
         "reference_characters": character_statistics["reference_characters"],
     }
-    result = {
+    result: Dict[str, object] = {
         "rate_mode": rate_mode,
         "rm_punctuation": rm_punctuation,
         "unicode_normalization": unicode_normalization,

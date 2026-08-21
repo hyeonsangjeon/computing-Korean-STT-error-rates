@@ -45,3 +45,23 @@ jobs:
           smoke_dir="$(mktemp -d)"
           cd "${smoke_dir}"
           python "${GITHUB_WORKSPACE}/.github/scripts/smoke_installed_package.py"
+
+  type-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install package and type checker
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . "mypy>=1.11,<2"
+
+      - name: Check typed package
+        run: python -m mypy nlptutti

@@ -4,7 +4,17 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union, cast
+from typing import (
+    Counter as CounterType,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 from nlptutti.asr_metrics import (
     COMPLEX_EOMI,
@@ -261,9 +271,9 @@ def _top_character_edits(
     unicode_normalization: Optional[str],
     limit: int = 10,
 ) -> Dict[str, object]:
-    substitutions = Counter()
-    deletions = Counter()
-    insertions = Counter()
+    substitutions: CounterType[Tuple[str, str]] = Counter()
+    deletions: CounterType[str] = Counter()
+    insertions: CounterType[str] = Counter()
     for reference, hypothesis in zip(references, hypotheses):
         explanation = explain_errors(
             reference,
@@ -278,13 +288,15 @@ def _top_character_edits(
             explanation["error_frequencies"],
         )
         for row in frequencies["substitutions"]:
-            substitutions[(row["reference"], row["hypothesis"])] += cast(
-                int, row["count"]
+            substitution = (
+                cast(str, row["reference"]),
+                cast(str, row["hypothesis"]),
             )
+            substitutions[substitution] += cast(int, row["count"])
         for row in frequencies["deletions"]:
-            deletions[row["reference"]] += cast(int, row["count"])
+            deletions[cast(str, row["reference"])] += cast(int, row["count"])
         for row in frequencies["insertions"]:
-            insertions[row["hypothesis"]] += cast(int, row["count"])
+            insertions[cast(str, row["hypothesis"])] += cast(int, row["count"])
     return {
         "limit": limit,
         "substitutions": _ranked(substitutions, "substitutions", limit),

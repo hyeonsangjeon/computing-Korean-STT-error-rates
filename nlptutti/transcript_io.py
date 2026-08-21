@@ -39,7 +39,7 @@ class TranscriptFormatError(ValueError):
     """Raised when a structured transcript violates its input contract."""
 
 
-def _resolve_source_format(source_format: str) -> str:
+def _resolve_source_format(source_format: object) -> str:
     if not isinstance(source_format, str):
         raise TypeError("source_format must be a string")
     resolved = _FORMAT_ALIASES.get(source_format.lower())
@@ -77,7 +77,7 @@ def _validate_number(value: object, field_name: str) -> float:
 
 
 def _validate_json_metadata(document: Mapping[str, object]) -> Dict[str, object]:
-    result = {}
+    result: Dict[str, object] = {}
     for field_name in _JSON_METADATA_FIELDS:
         if field_name not in document:
             continue
@@ -96,8 +96,8 @@ def _parse_json_segments(
     if not isinstance(segments, list):
         raise TranscriptFormatError("JSON segments must be a list")
 
-    texts = []
-    timestamps = []
+    texts: List[str] = []
+    timestamps: List[Dict[str, object]] = []
     timed_segments = 0
     for index, segment in enumerate(segments):
         if not isinstance(segment, Mapping):
@@ -155,14 +155,15 @@ def _parse_json(
     if has_text and not isinstance(document["text"], str):
         raise TranscriptFormatError("JSON text must be a string")
 
-    segment_texts = []
-    timestamps = []
+    segment_texts: List[str] = []
+    timestamps: List[Dict[str, object]] = []
     segments = document.get("segments")
     if "segments" in document:
         segment_texts, timestamps = _parse_json_segments(segments)
 
     if has_text:
         transcript_text = document["text"]
+        assert isinstance(transcript_text, str)
         text_source = "top_level_text"
     elif json_text_policy == "segments_fallback" and "segments" in document:
         transcript_text = " ".join(text for text in segment_texts if text)
@@ -173,7 +174,7 @@ def _parse_json(
             "json_text_policy='segments_fallback' to join segment text explicitly"
         )
 
-    provenance = {
+    provenance: Dict[str, object] = {
         "json_text_policy": json_text_policy,
         "text_source": text_source,
     }
@@ -181,7 +182,7 @@ def _parse_json(
     if metadata_fields:
         provenance["metadata"] = metadata_fields
     if "segments" in document:
-        provenance["segment_count"] = len(segments)
+        provenance["segment_count"] = len(segment_texts)
     if timestamps:
         # FunASR's JSON example does not state the timestamp unit, so values stay raw.
         provenance["timestamps"] = timestamps
@@ -212,8 +213,8 @@ def _parse_srt(data: Union[str, bytes]) -> ParsedTranscript:
     serialized = _decode_text(data, "SRT")
     lines = serialized.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     position = 0
-    cue_texts = []
-    timestamps = []
+    cue_texts: List[str] = []
+    timestamps: List[Dict[str, object]] = []
 
     while position < len(lines):
         while position < len(lines) and not lines[position].strip():
@@ -240,7 +241,7 @@ def _parse_srt(data: Union[str, bytes]) -> ParsedTranscript:
             raise TranscriptFormatError("SRT cue end must not precede start")
         position += 1
 
-        text_lines = []
+        text_lines: List[str] = []
         while position < len(lines) and lines[position].strip():
             if _SRT_TIMESTAMP.fullmatch(lines[position].strip()):
                 raise TranscriptFormatError(
@@ -300,8 +301,8 @@ def _parse_tsv(data: Union[str, bytes]) -> ParsedTranscript:
                 "TSV transcript is missing required header(s): " + ", ".join(missing)
             )
 
-        segment_texts = []
-        timestamps = []
+        segment_texts: List[str] = []
+        timestamps: List[Dict[str, object]] = []
         for row_number, row in enumerate(reader, start=2):
             if all(value in (None, "") for value in row.values()):
                 continue
@@ -440,16 +441,29 @@ def evaluate_transcript(
     resolved_unicode_normalization = _resolve_unicode_normalization(
         unicode_normalization
     )
-    metric_arguments = {
-        "rm_punctuation": rm_punctuation,
-        "rate_mode": resolved_rate_mode,
-        "unicode_normalization": resolved_unicode_normalization,
-    }
-    cer = get_cer(reference, hypothesis, **metric_arguments)
-    wer = get_wer(reference, hypothesis, **metric_arguments)
-    crr = get_crr(reference, hypothesis, **metric_arguments)
+    cer = get_cer(
+        reference,
+        hypothesis,
+        rm_punctuation=rm_punctuation,
+        rate_mode=resolved_rate_mode,
+        unicode_normalization=resolved_unicode_normalization,
+    )
+    wer = get_wer(
+        reference,
+        hypothesis,
+        rm_punctuation=rm_punctuation,
+        rate_mode=resolved_rate_mode,
+        unicode_normalization=resolved_unicode_normalization,
+    )
+    crr = get_crr(
+        reference,
+        hypothesis,
+        rm_punctuation=rm_punctuation,
+        rate_mode=resolved_rate_mode,
+        unicode_normalization=resolved_unicode_normalization,
+    )
 
-    source = {"format": source_format}
+    source: Dict[str, object] = {"format": source_format}
     if source_provenance:
         source["details"] = source_provenance
 

@@ -5,6 +5,7 @@ import json
 from importlib import metadata
 from itertools import combinations
 from typing import (
+    Dict,
     Iterable,
     List,
     Mapping,
@@ -32,7 +33,11 @@ from nlptutti.comparison_types import (
     RecognitionMetric,
     SystemMetrics,
 )
-from nlptutti.bootstrap import build_item_statistics, paired_bootstrap_intervals
+from nlptutti.bootstrap import (
+    MetricStatistics,
+    build_item_statistics,
+    paired_bootstrap_intervals,
+)
 from nlptutti.diagnostics import KOREAN_DIAGNOSTIC_PROFILE, diagnose_korean_errors
 from nlptutti.entity_metrics import evaluate_entities
 
@@ -216,8 +221,8 @@ def _system_metrics(
 
 
 def _metric_delta(
-    baseline: Mapping[str, Union[float, int]],
-    candidate: Mapping[str, Union[float, int]],
+    baseline: Union[AggregateMetric, RecognitionMetric],
+    candidate: Union[AggregateMetric, RecognitionMetric],
 ) -> MetricDelta:
     return {
         "micro": float(candidate["micro"]) - float(baseline["micro"]),
@@ -227,25 +232,29 @@ def _metric_delta(
 
 def _pairwise_results(
     systems: Sequence[ComparisonSystem],
-    item_statistics: Mapping[str, Mapping[str, object]],
+    item_statistics: Mapping[str, MetricStatistics],
     rate_mode: str,
     bootstrap: int,
     seed: int,
     confidence: float,
 ) -> List[PairwiseDelta]:
-    results = []
+    results: List[PairwiseDelta] = []
     for baseline, candidate in combinations(systems, 2):
-        metrics = {
-            metric_name: _metric_delta(
-                baseline["metrics"][metric_name],
-                candidate["metrics"][metric_name],
-            )
-            for metric_name in ("cer", "wer", "crr")
+        metrics: Dict[str, MetricDelta] = {
+            "cer": _metric_delta(
+                baseline["metrics"]["cer"], candidate["metrics"]["cer"]
+            ),
+            "wer": _metric_delta(
+                baseline["metrics"]["wer"], candidate["metrics"]["wer"]
+            ),
+            "crr": _metric_delta(
+                baseline["metrics"]["crr"], candidate["metrics"]["crr"]
+            ),
         }
         if bootstrap:
             intervals = paired_bootstrap_intervals(
-                cast(Mapping[str, object], item_statistics[baseline["id"]]),
-                cast(Mapping[str, object], item_statistics[candidate["id"]]),
+                item_statistics[baseline["id"]],
+                item_statistics[candidate["id"]],
                 rate_mode=rate_mode,
                 resamples=bootstrap,
                 seed=seed,
@@ -313,7 +322,7 @@ def compare_systems(
     system_values = _coerce_systems(systems, reference_ids, references_use_ids)
 
     system_results: List[ComparisonSystem] = []
-    item_statistics = {}
+    item_statistics: Dict[str, MetricStatistics] = {}
     for system_id, hypotheses in system_values:
         result: ComparisonSystem = {
             "id": system_id,
@@ -361,7 +370,7 @@ def compare_systems(
             resolved_unicode_normalization,
         )
 
-    warnings = []
+    warnings: List[str] = []
     report: ComparisonReport = {
         "schema": COMPARISON_SCHEMA,
         "evaluator": {"name": "nlptutti", "version": _package_version()},

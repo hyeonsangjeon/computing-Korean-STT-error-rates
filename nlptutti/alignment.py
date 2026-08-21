@@ -24,7 +24,9 @@ def align_sequences(
     reference_length = len(reference)
     hypothesis_length = len(hypothesis)
     costs = [[0] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
-    backtrace = [[None] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
+    backtrace: List[List[Optional[str]]] = [
+        [None] * (hypothesis_length + 1) for _ in range(reference_length + 1)
+    ]
 
     for ref_index in range(1, reference_length + 1):
         costs[ref_index][0] = ref_index
@@ -53,6 +55,8 @@ def align_sequences(
     hyp_index = hypothesis_length
     while ref_index > 0 or hyp_index > 0:
         operation = backtrace[ref_index][hyp_index]
+        if operation is None:
+            raise RuntimeError("alignment backtrace is incomplete")
         if operation in ("equal", "substitute"):
             alignment.append(
                 {

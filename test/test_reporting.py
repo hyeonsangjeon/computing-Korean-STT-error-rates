@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import nlptutti as nt
@@ -63,6 +64,36 @@ class TestComparisonReporting(unittest.TestCase):
         self.assertEqual(json_report["systems"], report["systems"])
         self.assertIn("test-version", markdown_report)
         self.assertTrue(markdown_report.endswith("\n"))
+
+    def test_bundle_writes_do_not_share_a_fixed_temporary_path(self):
+        report = fixed_report()
+        with tempfile.TemporaryDirectory() as directory:
+            with ThreadPoolExecutor(max_workers=16) as executor:
+                paths = list(
+                    executor.map(
+                        lambda _: nt.write_comparison_bundle(report, directory),
+                        range(64),
+                    )
+                )
+
+            self.assertTrue(all(item["json"].is_file() for item in paths))
+            self.assertEqual(
+                json.loads(paths[-1]["json"].read_text(encoding="utf-8")), report
+            )
+            self.assertFalse(list(Path(directory).glob("*.tmp")))
+
+    def test_markdown_escapes_multiline_system_ids(self):
+        report = nt.compare_systems(
+            ["가"],
+            {"base|\n`one`": ["나"], "candidate": ["가"]},
+            keywords=["가"],
+        )
+
+        markdown = nt.render_comparison_markdown(report)
+
+        self.assertNotIn("base\\|\n", markdown)
+        self.assertIn("base\\| `one`", markdown)
+        self.assertIn("`` base| `one` `` keywords", markdown)
 
     def test_unknown_schema_is_rejected(self):
         report = fixed_report()

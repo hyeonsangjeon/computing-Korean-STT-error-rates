@@ -23,6 +23,11 @@
 - wheel smoke가 `py.typed`, console script help, 비교 API와 실제 CLI 번들 생성을 source tree 밖에서 검사하도록 강화.
 - sdist에 전체 `docs/`, example corpus, 중첩 test fixture가 포함되도록 manifest 범위를 보강.
 
+### Fixed
+- 동시 bundle 저장이 고정 `.tmp` 경로를 공유해 실패할 수 있던 문제를 같은 디렉터리의 고유 임시 파일과 원자적 교체로 수정.
+- 줄바꿈·구분자·backtick이 포함된 system ID가 Markdown 표와 요약을 깨뜨리지 않도록 이스케이프 처리.
+- `py.typed` 소비자가 내부 주석 오류를 받지 않도록 전체 패키지의 mypy 검사를 통과하도록 타입 계약 보강.
+
 ### Compatibility
 - `get_cer`, `get_wer`, `get_crr`와 기존 공개 API의 인자 순서, 반환 키, `rate_mode="normalized"`, `rm_punctuation=True`, `unicode_normalization=None` 기본값을 유지.
 - 비교 API의 bootstrap과 한국어 진단, 원문 포함은 모두 명시적으로 선택할 때만 활성화.
@@ -35,6 +40,7 @@
 ### Tests
 - comparison 입력 정렬·schema·CLI, JSON/Markdown golden, paired bootstrap, alignment exhaustive small-input, provider malformed input, 한국어 진단 오탐 경계 테스트 추가.
 - Python 3.8~3.14 CI에서 wheel/sdist, metadata, 깨끗한 wheel 설치와 README 첫 실행 경로를 계속 검증.
+- Python 3.12에서 배포 대상 전체 모듈을 검사하는 별도 mypy CI와 동시 저장·Markdown ID 경계 테스트 추가.
 
 ### Known limitations
 - provider 자동 감지, Azure detailed/batch/fast, OpenAI API, AWS·Google·FunASR 전용 adapter는 이번 릴리스 범위가 아님.

@@ -5,7 +5,6 @@ import json
 from importlib import metadata
 from itertools import combinations
 from typing import (
-    Dict,
     Iterable,
     List,
     Mapping,
@@ -34,6 +33,7 @@ from nlptutti.comparison_types import (
     SystemMetrics,
 )
 from nlptutti.bootstrap import build_item_statistics, paired_bootstrap_intervals
+from nlptutti.diagnostics import KOREAN_DIAGNOSTIC_PROFILE, diagnose_korean_errors
 from nlptutti.entity_metrics import evaluate_entities
 
 
@@ -277,6 +277,7 @@ def compare_systems(
     bootstrap: int = 0,
     seed: int = 42,
     confidence: float = 0.95,
+    diagnostic_profile: Optional[str] = None,
     include_transcripts: bool = False,
 ) -> ComparisonReport:
     """Compare two or more aligned STT outputs without running an STT model.
@@ -291,6 +292,8 @@ def compare_systems(
         raise TypeError("rm_punctuation must be a boolean")
     if not isinstance(include_transcripts, bool):
         raise TypeError("include_transcripts must be a boolean")
+    if diagnostic_profile not in (None, KOREAN_DIAGNOSTIC_PROFILE):
+        raise ValueError("diagnostic_profile must be None or 'korean-v1'")
     if isinstance(bootstrap, bool) or not isinstance(bootstrap, int) or bootstrap < 0:
         raise ValueError("bootstrap must be a non-negative integer")
     if isinstance(seed, bool) or not isinstance(seed, int):
@@ -307,9 +310,7 @@ def compare_systems(
     reference_ids, reference_values, references_use_ids = _coerce_references(
         references, ids
     )
-    system_values = _coerce_systems(
-        systems, reference_ids, references_use_ids
-    )
+    system_values = _coerce_systems(systems, reference_ids, references_use_ids)
 
     system_results: List[ComparisonSystem] = []
     item_statistics = {}
@@ -342,6 +343,16 @@ def compare_systems(
                 rate_mode=resolved_rate_mode,
                 unicode_normalization=resolved_unicode_normalization,
             )
+        if diagnostic_profile is not None:
+            result["diagnostics"] = diagnose_korean_errors(
+                reference_values,
+                hypotheses,
+                rm_punctuation=rm_punctuation,
+                rate_mode=resolved_rate_mode,
+                unicode_normalization=resolved_unicode_normalization,
+                keyword_result=result.get("keywords"),
+                entity_result=result.get("entities"),
+            )
         system_results.append(result)
         item_statistics[system_id] = build_item_statistics(
             reference_values,
@@ -361,7 +372,7 @@ def compare_systems(
             "bootstrap_resamples": bootstrap,
             "bootstrap_seed": seed,
             "confidence": confidence,
-            "diagnostic_profile": None,
+            "diagnostic_profile": diagnostic_profile,
         },
         "dataset": {
             "item_count": len(reference_values),
@@ -379,6 +390,11 @@ def compare_systems(
         ),
         "warnings": warnings,
     }
+    if diagnostic_profile is not None:
+        warnings.append(
+            "diagnostics can include observed character edit tokens; "
+            "review the bundle before sharing"
+        )
     if include_transcripts:
         warnings.append(
             "raw_inputs contains transcript text because include_transcripts=True"

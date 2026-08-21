@@ -16,10 +16,14 @@ class TestCli(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "input.json"
-            input_path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            input_path.write_text(
+                json.dumps(document, ensure_ascii=False), encoding="utf-8"
+            )
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
-                exit_code = main(["compare", str(input_path), "--rate-mode", "standard"])
+                exit_code = main(
+                    ["compare", str(input_path), "--rate-mode", "standard"]
+                )
 
         report = json.loads(output.getvalue())
         self.assertEqual(exit_code, 0)
@@ -36,11 +40,11 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "input.json"
             output_path = Path(directory) / "report.json"
-            input_path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
-
-            exit_code = main(
-                ["compare", str(input_path), "--output", str(output_path)]
+            input_path.write_text(
+                json.dumps(document, ensure_ascii=False), encoding="utf-8"
             )
+
+            exit_code = main(["compare", str(input_path), "--output", str(output_path)])
             report = json.loads(output_path.read_text(encoding="utf-8"))
 
         self.assertEqual(exit_code, 0)
@@ -54,7 +58,9 @@ class TestCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             input_path = Path(directory) / "input.json"
             output_dir = Path(directory) / "bundle"
-            input_path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            input_path.write_text(
+                json.dumps(document, ensure_ascii=False), encoding="utf-8"
+            )
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 exit_code = main(
@@ -69,6 +75,37 @@ class TestCli(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(json_report["schema"], "nlptutti.comparison/1.0")
         self.assertIn("Nlptutti comparison report", markdown_report)
+
+    def test_compare_enables_korean_diagnostics_explicitly(self):
+        document = {
+            "references": ["부산 바다"],
+            "systems": {"a": ["부산바다"], "b": ["부산 바다"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "input.json"
+            input_path.write_text(
+                json.dumps(document, ensure_ascii=False), encoding="utf-8"
+            )
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                exit_code = main(
+                    [
+                        "compare",
+                        str(input_path),
+                        "--diagnostic-profile",
+                        "korean-v1",
+                    ]
+                )
+
+        report = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(report["options"]["diagnostic_profile"], "korean-v1")
+        self.assertEqual(
+            report["systems"][0]["diagnostics"]["spacing_boundary"][
+                "missing_boundaries"
+            ],
+            1,
+        )
 
 
 if __name__ == "__main__":

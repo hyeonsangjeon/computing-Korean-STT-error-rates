@@ -23,13 +23,16 @@ def render_comparison_json(report: ComparisonReport) -> str:
 
     _validate_report(report)
     try:
-        return json.dumps(
-            report,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
+        return (
+            json.dumps(
+                report,
+                ensure_ascii=False,
+                allow_nan=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
     except (TypeError, ValueError) as error:
         raise TypeError("report must contain only finite JSON values") from error
 
@@ -112,12 +115,8 @@ def _optional_summaries(report: ComparisonReport) -> str:
             )
         if "entities" in system:
             entities = cast(Mapping[str, object], system["entities"])
-            summary = cast(
-                Mapping[str, Union[int, float]], entities["summary"]
-            )
-            entity_cer = cast(
-                Mapping[str, Union[int, float]], entities["entity_cer"]
-            )
+            summary = cast(Mapping[str, Union[int, float]], entities["summary"])
+            entity_cer = cast(Mapping[str, Union[int, float]], entities["entity_cer"])
             lines.append(
                 "- `{}` entities: F1={}, entity CER micro={}".format(
                     system["id"],
@@ -126,6 +125,57 @@ def _optional_summaries(report: ComparisonReport) -> str:
                 )
             )
     return "\n".join(lines) if lines else "- No keyword or entity evaluation requested."
+
+
+def _table_text(value: object) -> str:
+    return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
+def _top_substitutions(diagnostics: Mapping[str, object]) -> str:
+    top_edits = cast(Mapping[str, object], diagnostics["top_character_edits"])
+    rows = cast(list, top_edits["substitutions"])
+    if not rows:
+        return "-"
+    return ", ".join(
+        "{}->{} ({})".format(
+            _table_text(row["reference"]),
+            _table_text(row["hypothesis"]),
+            row["count"],
+        )
+        for row in rows[:3]
+    )
+
+
+def _diagnostic_section(report: ComparisonReport) -> str:
+    systems = [system for system in report["systems"] if "diagnostics" in system]
+    if not systems:
+        return ""
+    lines = [
+        "## Korean diagnostics",
+        "",
+        "Number/unit and josa/eomi-adjacent rows are experimental heuristics, not morphological analysis.",
+        "",
+        "| System | Spacing missing/extra | Number-unit missing/unexpected | Josa/eomi adjacent | Top substitutions |",
+        "| --- | ---: | ---: | ---: | --- |",
+    ]
+    for system in systems:
+        diagnostics = cast(Mapping[str, object], system["diagnostics"])
+        spacing = cast(Mapping[str, int], diagnostics["spacing_boundary"])
+        number_unit = cast(Mapping[str, int], diagnostics["number_unit"])
+        suffix = cast(Mapping[str, int], diagnostics["josa_eomi_adjacent"])
+        lines.append(
+            "| {system} | {spacing_missing}/{spacing_extra} | "
+            "{number_missing}/{number_extra} | {suffix} | {top} |".format(
+                system=_table_text(system["id"]),
+                spacing_missing=spacing["missing_boundaries"],
+                spacing_extra=spacing["extra_boundaries"],
+                number_missing=number_unit["missing_mentions"],
+                number_extra=number_unit["unexpected_mentions"],
+                suffix=suffix["substitutions"],
+                top=_top_substitutions(diagnostics),
+            )
+        )
+    return "\n".join(lines) + "\n\n"
 
 
 def render_comparison_markdown(report: ComparisonReport) -> str:
@@ -137,9 +187,7 @@ def render_comparison_markdown(report: ComparisonReport) -> str:
     dataset = report["dataset"]
     warnings = report["warnings"]
     warning_lines = (
-        "\n".join(f"- {warning}" for warning in warnings)
-        if warnings
-        else "- None."
+        "\n".join(f"- {warning}" for warning in warnings) if warnings else "- None."
     )
     privacy = (
         "Raw transcripts are included by explicit opt-in."
@@ -171,7 +219,7 @@ CRR deltas mean the candidate has a higher recognition rate.
 
 {optional_summaries}
 
-## Provenance
+{diagnostic_section}## Provenance
 
 - IDs SHA-256: `{ids_sha256}`
 - References SHA-256: `{references_sha256}`
@@ -187,15 +235,14 @@ CRR deltas mean the candidate has a higher recognition rate.
         item_count=dataset["item_count"],
         rate_mode=options["rate_mode"],
         rm_punctuation=str(options["rm_punctuation"]).lower(),
-        unicode_normalization=(
-            options["unicode_normalization"] or "none"
-        ),
+        unicode_normalization=(options["unicode_normalization"] or "none"),
         bootstrap_resamples=options["bootstrap_resamples"],
         bootstrap_seed=options["bootstrap_seed"],
         confidence=_format_number(options["confidence"]),
         system_table=_system_table(report),
         pairwise_table=_pairwise_table(report),
         optional_summaries=_optional_summaries(report),
+        diagnostic_section=_diagnostic_section(report),
         ids_sha256=dataset["ids_sha256"],
         references_sha256=dataset["references_sha256"],
         privacy=privacy,

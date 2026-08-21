@@ -24,12 +24,15 @@ from nlptutti.transcript_io import (
     parse_transcript,
 )
 from nlptutti.provider_io import parse_provider_transcript
+from nlptutti.diagnostics import DIAGNOSTIC_SCHEMA, KOREAN_DIAGNOSTIC_PROFILE
 
 __all__ = [
     "COMPLEX_EOMI",
     "COMPLEX_JOSA",
     "COMPARISON_SCHEMA",
+    "DIAGNOSTIC_SCHEMA",
     "ComparisonReport",
+    "KOREAN_DIAGNOSTIC_PROFILE",
     "TranscriptFormatError",
     "calculate_keyword_error_rate_with_pattern",
     "compare_systems",

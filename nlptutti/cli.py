@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, Optional, Sequence, Tuple
 
 from nlptutti.comparison import TextCollection, compare_systems
 from nlptutti.reporting import render_comparison_json, write_comparison_bundle
@@ -114,6 +114,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     compare.add_argument("--seed", type=int, default=42)
     compare.add_argument("--confidence", type=float, default=0.95)
+    compare.add_argument(
+        "--diagnostic-profile",
+        choices=("korean-v1",),
+        help="add deterministic Korean diagnostic breakdowns",
+    )
     return parser
 
 
@@ -135,6 +140,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             bootstrap=arguments.bootstrap,
             seed=arguments.seed,
             confidence=arguments.confidence,
+            diagnostic_profile=arguments.diagnostic_profile,
             include_transcripts=arguments.include_transcripts,
         )
         serialized = render_comparison_json(report)

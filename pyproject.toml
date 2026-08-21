@@ -60,4 +60,4 @@ include = ["nlptutti*"]
 exclude = ["test*", "pic*"]
 
 [tool.setuptools.package-data]
-nlptutti = ["*.txt", "*.md"]
+nlptutti = ["*.txt", "*.md", "py.typed"]

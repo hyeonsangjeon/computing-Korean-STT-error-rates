@@ -46,6 +46,30 @@ class TestCli(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(report["dataset"]["item_count"], 1)
 
+    def test_compare_writes_json_and_markdown_bundle(self):
+        document = {
+            "references": ["가"],
+            "systems": {"a": ["나"], "b": ["가"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            input_path = Path(directory) / "input.json"
+            output_dir = Path(directory) / "bundle"
+            input_path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                exit_code = main(
+                    ["compare", str(input_path), "--output-dir", str(output_dir)]
+                )
+
+            json_report = json.loads(
+                (output_dir / "report.json").read_text(encoding="utf-8")
+            )
+            markdown_report = (output_dir / "report.md").read_text(encoding="utf-8")
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(json_report["schema"], "nlptutti.comparison/1.0")
+        self.assertIn("Nlptutti comparison report", markdown_report)
+
 
 if __name__ == "__main__":
     unittest.main()

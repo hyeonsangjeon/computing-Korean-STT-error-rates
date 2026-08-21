@@ -13,6 +13,11 @@ from nlptutti.asr_metrics import (
 from nlptutti.entity_metrics import evaluate_entities
 from nlptutti.comparison_types import COMPARISON_SCHEMA, ComparisonReport
 from nlptutti.comparison import compare_systems
+from nlptutti.reporting import (
+    render_comparison_json,
+    render_comparison_markdown,
+    write_comparison_bundle,
+)
 from nlptutti.transcript_io import (
     TranscriptFormatError,
     evaluate_transcript,
@@ -37,4 +42,7 @@ __all__ = [
     "get_wer",
     "make_keyword_pattern",
     "parse_transcript",
+    "render_comparison_json",
+    "render_comparison_markdown",
+    "write_comparison_bundle",
 ]

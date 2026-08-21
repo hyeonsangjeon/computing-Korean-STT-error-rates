@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from nlptutti.comparison import TextCollection, compare_systems
+from nlptutti.reporting import render_comparison_json, write_comparison_bundle
 
 
 def _item_list_to_mapping(values: object, field_name: str) -> Dict[str, str]:
@@ -81,6 +82,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="write JSON to this path instead of standard output",
     )
     compare.add_argument(
+        "--output-dir",
+        type=Path,
+        help="write report.json and report.md to this directory",
+    )
+    compare.add_argument(
         "--rate-mode",
         choices=("normalized", "standard"),
         default="normalized",
@@ -119,18 +125,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             unicode_normalization=arguments.unicode_normalization,
             include_transcripts=arguments.include_transcripts,
         )
-        serialized = json.dumps(
-            report,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
-        if arguments.output is None:
-            sys.stdout.write(serialized)
-        else:
+        serialized = render_comparison_json(report)
+        if arguments.output is not None and arguments.output_dir is not None:
+            raise ValueError("--output and --output-dir cannot be used together")
+        if arguments.output_dir is not None:
+            paths = write_comparison_bundle(report, arguments.output_dir)
+            sys.stdout.write(
+                "wrote {} and {}\n".format(paths["json"], paths["markdown"])
+            )
+        elif arguments.output is not None:
             arguments.output.parent.mkdir(parents=True, exist_ok=True)
             arguments.output.write_text(serialized, encoding="utf-8")
+        else:
+            sys.stdout.write(serialized)
     except (TypeError, ValueError) as error:
         parser.error(str(error))
     return 0

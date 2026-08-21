@@ -25,18 +25,14 @@ class TestProviderTranscriptAdapters(unittest.TestCase):
 
     def test_whisper_fixture_and_evaluation_are_json_safe(self):
         transcript = nt.parse_provider_transcript(
-            (FIXTURES / "openai-whisper-transcribe.json").read_text(
-                encoding="utf-8"
-            ),
+            (FIXTURES / "openai-whisper-transcribe.json").read_text(encoding="utf-8"),
             "openai-whisper",
             schema_version="transcribe-v1",
         )
         report = nt.evaluate_transcript("오늘 회의가 있습니다.", transcript)
 
         self.assertEqual(transcript["text"], " 오늘 회의가 있습니다.")
-        self.assertEqual(
-            transcript["provenance"]["metadata"], {"language": "ko"}
-        )
+        self.assertEqual(transcript["provenance"]["metadata"], {"language": "ko"})
         self.assertEqual(transcript["provenance"]["timestamp_unit"], "seconds")
         json.dumps(report, ensure_ascii=False, allow_nan=False)
 
@@ -57,9 +53,7 @@ class TestProviderTranscriptAdapters(unittest.TestCase):
 
     def test_provider_and_schema_are_never_inferred(self):
         with self.assertRaisesRegex(ValueError, "provider must be one of"):
-            nt.parse_provider_transcript(
-                {}, "auto", schema_version="transcribe-v1"
-            )
+            nt.parse_provider_transcript({}, "auto", schema_version="transcribe-v1")
         with self.assertRaisesRegex(ValueError, "unsupported schema_version"):
             nt.parse_provider_transcript(
                 {}, "openai-whisper", schema_version="verbose-json-v2"

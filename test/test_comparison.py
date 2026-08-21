@@ -17,7 +17,9 @@ class TestCompareSystems(unittest.TestCase):
 
         self.assertEqual(report["schema"], nt.COMPARISON_SCHEMA)
         self.assertEqual(report["dataset"]["item_count"], 2)
-        self.assertEqual([item["id"] for item in report["systems"]], ["baseline", "candidate"])
+        self.assertEqual(
+            [item["id"] for item in report["systems"]], ["baseline", "candidate"]
+        )
         self.assertGreater(report["systems"][0]["metrics"]["cer"]["micro"], 0)
         self.assertEqual(report["systems"][1]["metrics"]["cer"]["micro"], 0)
         self.assertLess(report["pairwise"][0]["metrics"]["cer"]["micro"], 0)

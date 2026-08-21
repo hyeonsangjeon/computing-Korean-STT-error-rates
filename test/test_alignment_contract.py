@@ -48,8 +48,7 @@ class TestSharedAlignment(unittest.TestCase):
         strings = [""]
         for length in range(1, 4):
             strings.extend(
-                "".join(values)
-                for values in itertools.product("가나", repeat=length)
+                "".join(values) for values in itertools.product("가나", repeat=length)
             )
 
         for reference in strings:

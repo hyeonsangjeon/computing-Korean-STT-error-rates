@@ -66,9 +66,7 @@ def _non_negative_integer(value: object, field_name: str) -> int:
 def _parse_azure_short_audio(document: Mapping[str, object]) -> Dict[str, object]:
     status = document.get("RecognitionStatus")
     if not isinstance(status, str):
-        raise TranscriptFormatError(
-            "azure-speech RecognitionStatus must be a string"
-        )
+        raise TranscriptFormatError("azure-speech RecognitionStatus must be a string")
     if status != "Success":
         raise TranscriptFormatError(
             "azure-speech recognition did not succeed: {}".format(status)
@@ -95,9 +93,7 @@ def _parse_azure_short_audio(document: Mapping[str, object]) -> Dict[str, object
     }
     if has_offset:
         provenance["timing"] = {
-            "offset": _non_negative_integer(
-                document["Offset"], "azure-speech Offset"
-            ),
+            "offset": _non_negative_integer(document["Offset"], "azure-speech Offset"),
             "duration": _non_negative_integer(
                 document["Duration"], "azure-speech Duration"
             ),
@@ -142,9 +138,7 @@ def _parse_whisper(document: Mapping[str, object]) -> Dict[str, object]:
         )
         if end < start:
             raise TranscriptFormatError(
-                "openai-whisper segments[{}].end must not precede start".format(
-                    index
-                )
+                "openai-whisper segments[{}].end must not precede start".format(index)
             )
         timestamps.append({"start": start, "end": end})
 

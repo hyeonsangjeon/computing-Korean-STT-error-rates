@@ -39,7 +39,9 @@ def build_item_statistics(
             hypothesis, rm_punctuation, unicode_normalization
         )
         result["cer"].append(
-            EditStatistics(*_measure_cer(processed_cer_reference, processed_cer_hypothesis))
+            EditStatistics(
+                *_measure_cer(processed_cer_reference, processed_cer_hypothesis)
+            )
         )
 
         processed_wer_reference = _preprocess_wer_text(
@@ -49,7 +51,9 @@ def build_item_statistics(
             hypothesis, rm_punctuation, unicode_normalization
         )
         result["wer"].append(
-            EditStatistics(*_measure_wer(processed_wer_reference, processed_wer_hypothesis))
+            EditStatistics(
+                *_measure_wer(processed_wer_reference, processed_wer_hypothesis)
+            )
         )
     return result
 
@@ -82,8 +86,7 @@ def _percentile(sorted_values: Sequence[float], probability: float) -> float:
         return sorted_values[lower_index]
     weight = position - lower_index
     return (
-        sorted_values[lower_index] * (1 - weight)
-        + sorted_values[upper_index] * weight
+        sorted_values[lower_index] * (1 - weight) + sorted_values[upper_index] * weight
     )
 
 
@@ -102,20 +105,21 @@ def paired_bootstrap_intervals(
     if item_count < 2:
         raise ValueError("paired bootstrap requires at least two aligned items")
     for metric_name in ("cer", "wer"):
-        if len(baseline[metric_name]) != item_count or len(candidate[metric_name]) != item_count:
-            raise ValueError("paired bootstrap statistics must have identical item counts")
+        if (
+            len(baseline[metric_name]) != item_count
+            or len(candidate[metric_name]) != item_count
+        ):
+            raise ValueError(
+                "paired bootstrap statistics must have identical item counts"
+            )
 
     random_generator = random.Random(seed)
     deltas = {"cer": [], "wer": []}
     for _ in range(resamples):
         indices = [random_generator.randrange(item_count) for _ in range(item_count)]
         for metric_name in ("cer", "wer"):
-            baseline_rate = _sample_rate(
-                baseline[metric_name], indices, rate_mode
-            )
-            candidate_rate = _sample_rate(
-                candidate[metric_name], indices, rate_mode
-            )
+            baseline_rate = _sample_rate(baseline[metric_name], indices, rate_mode)
+            candidate_rate = _sample_rate(candidate[metric_name], indices, rate_mode)
             deltas[metric_name].append(candidate_rate - baseline_rate)
 
     lower_probability = (1 - confidence) / 2

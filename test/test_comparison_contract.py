@@ -13,18 +13,48 @@ class TestComparisonTypeContract(unittest.TestCase):
     def test_existing_public_signatures_keep_historical_defaults(self):
         expected = {
             "get_cer": (
-                ("reference", "transcription", "rm_punctuation", "rate_mode", "unicode_normalization"),
-                {"rm_punctuation": True, "rate_mode": "normalized", "unicode_normalization": None},
+                (
+                    "reference",
+                    "transcription",
+                    "rm_punctuation",
+                    "rate_mode",
+                    "unicode_normalization",
+                ),
+                {
+                    "rm_punctuation": True,
+                    "rate_mode": "normalized",
+                    "unicode_normalization": None,
+                },
                 {"rate_mode", "unicode_normalization"},
             ),
             "get_wer": (
-                ("reference", "transcription", "rm_punctuation", "rate_mode", "unicode_normalization"),
-                {"rm_punctuation": True, "rate_mode": "normalized", "unicode_normalization": None},
+                (
+                    "reference",
+                    "transcription",
+                    "rm_punctuation",
+                    "rate_mode",
+                    "unicode_normalization",
+                ),
+                {
+                    "rm_punctuation": True,
+                    "rate_mode": "normalized",
+                    "unicode_normalization": None,
+                },
                 {"rate_mode", "unicode_normalization"},
             ),
             "get_crr": (
-                ("reference", "transcription", "rm_punctuation", "rate_mode", "unicode_normalization"),
-                {"rm_punctuation": True, "rate_mode": "normalized", "unicode_normalization": None},
+                (
+                    "reference",
+                    "transcription",
+                    "rm_punctuation",
+                    "rate_mode",
+                    "unicode_normalization",
+                ),
+                {
+                    "rm_punctuation": True,
+                    "rate_mode": "normalized",
+                    "unicode_normalization": None,
+                },
                 {"rate_mode", "unicode_normalization"},
             ),
             "parse_transcript": (

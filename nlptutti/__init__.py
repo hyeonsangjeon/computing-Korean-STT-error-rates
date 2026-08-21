@@ -12,6 +12,7 @@ from nlptutti.asr_metrics import (
 )
 from nlptutti.entity_metrics import evaluate_entities
 from nlptutti.comparison_types import COMPARISON_SCHEMA, ComparisonReport
+from nlptutti.comparison import compare_systems
 from nlptutti.transcript_io import (
     TranscriptFormatError,
     evaluate_transcript,
@@ -25,6 +26,7 @@ __all__ = [
     "ComparisonReport",
     "TranscriptFormatError",
     "calculate_keyword_error_rate_with_pattern",
+    "compare_systems",
     "evaluate_corpus",
     "evaluate_entities",
     "evaluate_keywords",

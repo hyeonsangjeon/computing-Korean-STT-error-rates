@@ -48,6 +48,9 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 
+[project.scripts]
+nlptutti = "nlptutti.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"
 Repository = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"

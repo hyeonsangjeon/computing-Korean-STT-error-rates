@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 비공개 보안 취약점 제보
+    url: https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/security/advisories/new
+    about: 취약점과 민감한 보안 정보는 공개 issue 대신 이 경로로 보내 주세요.

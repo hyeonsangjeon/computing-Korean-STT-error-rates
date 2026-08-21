@@ -29,6 +29,7 @@ from nlptutti.asr_metrics import (
     _resolve_rate_mode,
     _resolve_unicode_normalization,
 )
+from nlptutti.alignment import align_sequences
 
 
 _MENTION_COUNT_NAMES = (
@@ -291,75 +292,7 @@ def _preprocess_with_offsets(text: str, rm_punctuation: bool) -> Tuple[str, List
 def _align_with_indices(
     reference: Sequence[str], hypothesis: Sequence[str]
 ) -> List[Dict[str, object]]:
-    reference_length = len(reference)
-    hypothesis_length = len(hypothesis)
-    costs = [[0] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
-    backtrace = [[None] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
-
-    for ref_index in range(1, reference_length + 1):
-        costs[ref_index][0] = ref_index
-        backtrace[ref_index][0] = "delete"
-    for hyp_index in range(1, hypothesis_length + 1):
-        costs[0][hyp_index] = hyp_index
-        backtrace[0][hyp_index] = "insert"
-
-    for ref_index in range(1, reference_length + 1):
-        for hyp_index in range(1, hypothesis_length + 1):
-            is_equal = reference[ref_index - 1] == hypothesis[hyp_index - 1]
-            candidates = [
-                (
-                    costs[ref_index - 1][hyp_index - 1] + int(not is_equal),
-                    "equal" if is_equal else "substitute",
-                ),
-                (costs[ref_index][hyp_index - 1] + 1, "insert"),
-                (costs[ref_index - 1][hyp_index] + 1, "delete"),
-            ]
-            costs[ref_index][hyp_index], backtrace[ref_index][hyp_index] = min(
-                candidates, key=lambda candidate: candidate[0]
-            )
-
-    alignment = []
-    ref_index = reference_length
-    hyp_index = hypothesis_length
-    while ref_index > 0 or hyp_index > 0:
-        operation = backtrace[ref_index][hyp_index]
-        if operation in ("equal", "substitute"):
-            alignment.append(
-                {
-                    "type": operation,
-                    "reference": reference[ref_index - 1],
-                    "hypothesis": hypothesis[hyp_index - 1],
-                    "reference_index": ref_index - 1,
-                    "reference_position": ref_index - 1,
-                }
-            )
-            ref_index -= 1
-            hyp_index -= 1
-        elif operation == "insert":
-            alignment.append(
-                {
-                    "type": operation,
-                    "reference": "",
-                    "hypothesis": hypothesis[hyp_index - 1],
-                    "reference_index": None,
-                    "reference_position": ref_index,
-                }
-            )
-            hyp_index -= 1
-        else:
-            alignment.append(
-                {
-                    "type": "delete",
-                    "reference": reference[ref_index - 1],
-                    "hypothesis": "",
-                    "reference_index": ref_index - 1,
-                    "reference_position": ref_index - 1,
-                }
-            )
-            ref_index -= 1
-
-    alignment.reverse()
-    return alignment
+    return list(align_sequences(reference, hypothesis))
 
 
 def _map_occurrence_tokens(

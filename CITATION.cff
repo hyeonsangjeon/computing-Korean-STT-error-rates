@@ -6,7 +6,7 @@ authors:
   - family-names: Jeon
     given-names: Hyeon Sang
     alias: hyeonsangjeon
-version: 0.0.0.20
+version: 0.0.0.21
 date-released: 2026-08-22
 license: MIT
 repository-code: "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"

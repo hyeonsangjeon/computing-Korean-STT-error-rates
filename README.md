@@ -17,6 +17,9 @@ Microsoft Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은
 <p align="center">
   <img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" alt="표준 CER·WER와 Nlptutti normalized 오류율 공식" width="640">
 </p>
+<p align="center">
+  <sub><strong>S</strong> 치환 · <strong>D</strong> 삭제 · <strong>I</strong> 삽입 · <strong>N</strong> 참조 단위 수 · <strong>C</strong> 정답 일치 수</sub>
+</p>
 
 ## 1분 빠른 시작
 

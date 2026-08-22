@@ -15,7 +15,7 @@ class TestReleaseMetadata(unittest.TestCase):
         version_match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
         self.assertIsNotNone(version_match)
         version = version_match.group(1)
-        self.assertEqual(version, "0.0.0.21")
+        self.assertEqual(version, "0.0.0.22")
         self.assertIn("## [{}] - 2026-08-22".format(version), changelog)
         self.assertIn("version: {}".format(version), citation)
         self.assertIn("date-released: 2026-08-22", citation)
@@ -30,6 +30,12 @@ class TestReleaseMetadata(unittest.TestCase):
             readme,
         )
         self.assertIn('alt="표준 CER·WER와 Nlptutti normalized 오류율 공식"', readme)
+        self.assertIn(
+            "<strong>S</strong> 치환 · <strong>D</strong> 삭제 · "
+            "<strong>I</strong> 삽입 · <strong>N</strong> 참조 단위 수 · "
+            "<strong>C</strong> 정답 일치 수",
+            readme,
+        )
         self.assertTrue((ROOT / "pic" / "FORMULA_CASE.png").is_file())
 
     def test_zero_one_release_is_explicitly_deferred(self):

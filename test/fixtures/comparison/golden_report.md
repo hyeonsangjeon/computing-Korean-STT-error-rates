@@ -34,6 +34,7 @@ CRR deltas mean the candidate has a higher recognition rate.
 
 - IDs SHA-256: `53d7f4a048bd0daee134c84d46a9de1de3d4c71942f740eb4f964d3fccbeecf3`
 - References SHA-256: `2166ca7f4990a95faeb9a6b52d9aba4812b82c1667687bf54303ebc42b653e13`
+- Evaluation config SHA-256: `none`
 - Privacy: Raw transcripts are excluded; only fingerprints and aggregate results are stored.
 
 ## Warnings

@@ -7,7 +7,7 @@ authors:
     given-names: Hyeon Sang
     alias: hyeonsangjeon
 version: 0.0.0.20
-date-released: 2026-08-21
+date-released: 2026-08-22
 license: MIT
 repository-code: "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"
 url: "https://pypi.org/project/nlptutti/"

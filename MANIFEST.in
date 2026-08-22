@@ -1,3 +1,5 @@
+include CHANGELOG.md CITATION.cff CONTRIBUTING.md SECURITY.md
+recursive-include benchmarks *.py
 recursive-include docs *.json *.md
 recursive-include examples *.json
 recursive-include test/fixtures *.json *.md *.srt *.tsv *.txt

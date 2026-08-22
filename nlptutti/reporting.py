@@ -206,6 +206,7 @@ def render_comparison_markdown(report: ComparisonReport) -> str:
     evaluator = report["evaluator"]
     options = report["options"]
     dataset = report["dataset"]
+    evaluation_config = report["evaluation_config"]
     warnings = report["warnings"]
     warning_lines = (
         "\n".join(f"- {warning}" for warning in warnings) if warnings else "- None."
@@ -244,6 +245,7 @@ CRR deltas mean the candidate has a higher recognition rate.
 
 - IDs SHA-256: `{ids_sha256}`
 - References SHA-256: `{references_sha256}`
+- Evaluation config SHA-256: `{evaluation_config_sha256}`
 - Privacy: {privacy}
 
 ## Warnings
@@ -266,6 +268,7 @@ CRR deltas mean the candidate has a higher recognition rate.
         diagnostic_section=_diagnostic_section(report),
         ids_sha256=dataset["ids_sha256"],
         references_sha256=dataset["references_sha256"],
+        evaluation_config_sha256=(evaluation_config["sha256"] or "none"),
         privacy=privacy,
         warning_lines=warning_lines,
     )

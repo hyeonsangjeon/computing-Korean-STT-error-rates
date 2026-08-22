@@ -7,7 +7,6 @@ import tracemalloc
 
 from nlptutti.alignment import align_sequences
 
-
 WARNING_RATIO = 1.25
 
 
@@ -36,7 +35,47 @@ def legacy_align(reference, hypothesis):
             costs[ref_index][hyp_index], backtrace[ref_index][hyp_index] = min(
                 candidates, key=lambda candidate: candidate[0]
             )
-    return costs[-1][-1], backtrace
+    alignment = []
+    ref_index = reference_length
+    hyp_index = hypothesis_length
+    while ref_index > 0 or hyp_index > 0:
+        operation = backtrace[ref_index][hyp_index]
+        if operation in ("equal", "substitute"):
+            alignment.append(
+                {
+                    "type": operation,
+                    "reference": reference[ref_index - 1],
+                    "hypothesis": hypothesis[hyp_index - 1],
+                    "reference_index": ref_index - 1,
+                    "reference_position": ref_index - 1,
+                }
+            )
+            ref_index -= 1
+            hyp_index -= 1
+        elif operation == "insert":
+            alignment.append(
+                {
+                    "type": operation,
+                    "reference": "",
+                    "hypothesis": hypothesis[hyp_index - 1],
+                    "reference_index": None,
+                    "reference_position": ref_index,
+                }
+            )
+            hyp_index -= 1
+        else:
+            alignment.append(
+                {
+                    "type": "delete",
+                    "reference": reference[ref_index - 1],
+                    "hypothesis": "",
+                    "reference_index": ref_index - 1,
+                    "reference_position": ref_index - 1,
+                }
+            )
+            ref_index -= 1
+    alignment.reverse()
+    return alignment
 
 
 def measure(function, cases, repeats=5):
@@ -57,9 +96,13 @@ def measure(function, cases, repeats=5):
 def main():
     base = list("한국어음성인식평가도구") * 8
     cases = [
-        (base, base[:-index] + list("오류") + base[-index:])
-        for index in range(1, 9)
+        (base, base[:-index] + list("오류") + base[-index:]) for index in range(1, 9)
     ]
+    for reference, hypothesis in cases:
+        if legacy_align(reference, hypothesis) != align_sequences(
+            reference, hypothesis
+        ):
+            raise RuntimeError("shared alignment changed the legacy edit path")
     legacy_runtime, legacy_memory = measure(legacy_align, cases)
     shared_runtime, shared_memory = measure(align_sequences, cases)
     result = {

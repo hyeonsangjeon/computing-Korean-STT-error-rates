@@ -23,24 +23,24 @@ from nlptutti.asr_metrics import (
     evaluate_keywords,
     get_crr,
 )
-from nlptutti.comparison_types import (
-    AggregateMetric,
-    COMPARISON_SCHEMA,
-    ComparisonReport,
-    ComparisonSystem,
-    MetricDelta,
-    PairwiseDelta,
-    RecognitionMetric,
-    SystemMetrics,
-)
 from nlptutti.bootstrap import (
     MetricStatistics,
     build_item_statistics,
     paired_bootstrap_intervals,
 )
+from nlptutti.comparison_types import (
+    COMPARISON_SCHEMA,
+    AggregateMetric,
+    ComparisonReport,
+    ComparisonSystem,
+    EvaluationConfig,
+    MetricDelta,
+    PairwiseDelta,
+    RecognitionMetric,
+    SystemMetrics,
+)
 from nlptutti.diagnostics import KOREAN_DIAGNOSTIC_PROFILE, diagnose_korean_errors
 from nlptutti.entity_metrics import evaluate_entities
-
 
 TextCollection = Union[Iterable[str], Mapping[str, str]]
 KeywordInput = Union[str, Sequence[str], Mapping[str, Union[str, Sequence[str]]]]
@@ -87,10 +87,10 @@ def _coerce_references(
     if isinstance(references, Mapping):
         if ids is not None:
             raise ValueError("ids must be omitted when references is a mapping")
-        reference_ids = _validate_ids(list(references.keys()), "reference ID")
+        reference_ids = sorted(_validate_ids(list(references.keys()), "reference ID"))
         if not reference_ids:
             raise ValueError("references must not be empty")
-        reference_values = list(references.values())
+        reference_values = [references[item_id] for item_id in reference_ids]
         if not all(isinstance(value, str) for value in reference_values):
             raise TypeError("every reference value must be a string")
         return reference_ids, cast(List[str], reference_values), True
@@ -163,14 +163,71 @@ def _coerce_systems(
     ]
 
 
-def _fingerprint(values: Sequence[str]) -> str:
+def _fingerprint(value: object) -> str:
     serialized = json.dumps(
-        list(values),
+        value,
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
+        sort_keys=True,
     ).encode("utf-8")
     return hashlib.sha256(serialized).hexdigest()
+
+
+def _canonical_config_value(value: object, field_name: str) -> object:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Mapping):
+        result = {}
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError(f"every key in {field_name} must be a string")
+            result[key] = _canonical_config_value(item, field_name)
+        return result
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return [_canonical_config_value(item, field_name) for item in value]
+    raise TypeError(
+        f"{field_name} must contain only strings, ordered sequences, and mappings"
+    )
+
+
+def _evaluation_config(
+    keywords: Optional[KeywordInput],
+    entities: Optional[KeywordInput],
+    entity_aliases: Optional[Mapping[str, Union[str, Sequence[str]]]],
+) -> EvaluationConfig:
+    if entity_aliases is not None and entities is None:
+        raise ValueError("entity_aliases requires entities")
+    configured = any(
+        value is not None for value in (keywords, entities, entity_aliases)
+    )
+    fingerprint = None
+    if configured:
+        fingerprint = _fingerprint(
+            {
+                "keywords": (
+                    None
+                    if keywords is None
+                    else _canonical_config_value(keywords, "keywords")
+                ),
+                "entities": (
+                    None
+                    if entities is None
+                    else _canonical_config_value(entities, "entities")
+                ),
+                "entity_aliases": (
+                    None
+                    if entity_aliases is None
+                    else _canonical_config_value(entity_aliases, "entity_aliases")
+                ),
+            }
+        )
+    return {
+        "keywords": keywords is not None,
+        "entities": entities is not None,
+        "entity_aliases": entity_aliases is not None,
+        "sha256": fingerprint,
+    }
 
 
 def _aggregate_metric(value: Mapping[str, object]) -> AggregateMetric:
@@ -320,6 +377,7 @@ def compare_systems(
         references, ids
     )
     system_values = _coerce_systems(systems, reference_ids, references_use_ids)
+    evaluation_config = _evaluation_config(keywords, entities, entity_aliases)
 
     system_results: List[ComparisonSystem] = []
     item_statistics: Dict[str, MetricStatistics] = {}
@@ -388,6 +446,7 @@ def compare_systems(
             "ids_sha256": _fingerprint(reference_ids),
             "references_sha256": _fingerprint(reference_values),
         },
+        "evaluation_config": evaluation_config,
         "systems": system_results,
         "pairwise": _pairwise_results(
             system_results,

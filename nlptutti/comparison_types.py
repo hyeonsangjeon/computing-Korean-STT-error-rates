@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional, TypedDict, Union
 
-
 COMPARISON_SCHEMA = "nlptutti.comparison/1.0"
 
 JSONScalar = Union[str, int, float, bool, None]
@@ -27,6 +26,13 @@ class DatasetInfo(TypedDict):
     item_count: int
     ids_sha256: str
     references_sha256: str
+
+
+class EvaluationConfig(TypedDict):
+    keywords: bool
+    entities: bool
+    entity_aliases: bool
+    sha256: Optional[str]
 
 
 class AggregateMetric(TypedDict):
@@ -107,6 +113,7 @@ class ComparisonReportRequired(TypedDict):
     evaluator: EvaluatorInfo
     options: ComparisonOptions
     dataset: DatasetInfo
+    evaluation_config: EvaluationConfig
     systems: List[ComparisonSystem]
     pairwise: List[PairwiseDelta]
     warnings: List[str]
@@ -124,6 +131,7 @@ __all__ = [
     "ComparisonSystem",
     "ConfidenceInterval",
     "DatasetInfo",
+    "EvaluationConfig",
     "EvaluatorInfo",
     "MetricDelta",
     "PairwiseDelta",

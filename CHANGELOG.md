@@ -2,7 +2,7 @@
 
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
-## [0.0.0.20] - 2026-08-21
+## [0.0.0.20] - 2026-08-22
 
 ---
 
@@ -14,6 +14,7 @@
 - Microsoft Azure Speech short-audio simple 응답과 오픈소스 OpenAI Whisper `transcribe()` 결과를 읽는 명시적 provider adapter 추가.
 - 띄어쓰기 경계, 숫자·단위, 조사·어미 인접 치환, 상위 문자 편집을 분리하는 opt-in `korean-v1` 진단 프로필 추가.
 - 공개 비교 결과 `TypedDict`, `py.typed`, comparison schema 문서와 공급자·진단·비교 매뉴얼 추가.
+- 키워드·개체명·별칭 설정을 다시 확인할 수 있는 evaluation config SHA-256 provenance 추가.
 - 기여, 인용, 비공개 보안 제보 정책과 provider·metric·문서 Issue Form 추가.
 - 릴리스 직전 GitHub 14일 traffic, PyPIStats 일별·30일, 공개 code search를 분리한 채택 기준선과 30·60·90일 검토 템플릿 추가.
 
@@ -22,8 +23,10 @@
 - README와 PyPI 첫 화면을 설치, 단일 CER, 두 시스템 비교, JSON/Markdown 저장 순서로 단축하고 같은 fixture의 기대값을 CI에서 검증.
 - wheel smoke가 `py.typed`, console script help, 비교 API와 실제 CLI 번들 생성을 source tree 밖에서 검사하도록 강화.
 - sdist에 전체 `docs/`, example corpus, 중첩 test fixture가 포함되도록 manifest 범위를 보강.
+- sdist에 정렬 benchmark와 CHANGELOG·기여·인용·보안 문서가 포함되도록 공개 검증 자료를 보강.
 
 ### Fixed
+- ID mapping의 삽입 순서가 달라져도 fingerprint와 paired bootstrap 결과가 같도록 ID 정렬 순서를 고정.
 - 동시 bundle 저장이 고정 `.tmp` 경로를 공유해 실패할 수 있던 문제를 같은 디렉터리의 고유 임시 파일과 원자적 교체로 수정.
 - 줄바꿈·구분자·backtick이 포함된 system ID가 Markdown 표와 요약을 깨뜨리지 않도록 이스케이프 처리.
 - `py.typed` 소비자가 내부 주석 오류를 받지 않도록 전체 패키지의 mypy 검사를 통과하도록 타입 계약 보강.
@@ -39,6 +42,7 @@
 
 ### Tests
 - comparison 입력 정렬·schema·CLI, JSON/Markdown golden, paired bootstrap, alignment exhaustive small-input, provider malformed input, 한국어 진단 오탐 경계 테스트 추가.
+- 통합 전 정렬 구현도 실제 edit path 생성까지 실행하도록 성능 baseline의 비교 작업량을 대칭으로 보정.
 - Python 3.8~3.14 CI에서 wheel/sdist, metadata, 깨끗한 wheel 설치와 README 첫 실행 경로를 계속 검증.
 - Python 3.12에서 배포 대상 전체 모듈을 검사하는 별도 mypy CI와 동시 저장·Markdown ID 경계 테스트 추가.
 

@@ -16,9 +16,9 @@ class TestReleaseMetadata(unittest.TestCase):
         self.assertIsNotNone(version_match)
         version = version_match.group(1)
         self.assertEqual(version, "0.0.0.20")
-        self.assertIn("## [{}] - 2026-08-21".format(version), changelog)
+        self.assertIn("## [{}] - 2026-08-22".format(version), changelog)
         self.assertIn("version: {}".format(version), citation)
-        self.assertIn("date-released: 2026-08-21", citation)
+        self.assertIn("date-released: 2026-08-22", citation)
         self.assertIn("Development Status :: 4 - Beta", pyproject)
 
     def test_zero_one_release_is_explicitly_deferred(self):
@@ -29,6 +29,15 @@ class TestReleaseMetadata(unittest.TestCase):
         self.assertIn("0.1.0", policy)
         self.assertIn("두 patch release", policy)
         self.assertIn("experimental", policy)
+
+    def test_source_distribution_manifest_keeps_public_validation_materials(self):
+        manifest = (ROOT / "MANIFEST.in").read_text(encoding="utf-8")
+
+        for path in ("CHANGELOG.md", "CITATION.cff", "CONTRIBUTING.md", "SECURITY.md"):
+            with self.subTest(path=path):
+                self.assertIn(path, manifest)
+        self.assertIn("recursive-include benchmarks *.py", manifest)
+        self.assertIn("recursive-include docs *.json *.md", manifest)
 
     def test_trusted_publisher_identity_flow_is_preserved(self):
         workflow = (ROOT / ".github" / "workflows" / "publish-to-pypi.yml").read_text(

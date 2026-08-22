@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.19"
+version = "0.0.0.20"
 description = "Korean STT CER, WER, and CRR metrics with explicit normalization and reproducible reports"
 readme = "README.md"
 license = {text = "MIT"}
@@ -48,6 +48,9 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 
+[project.scripts]
+nlptutti = "nlptutti.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"
 Repository = "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"
@@ -60,4 +63,4 @@ include = ["nlptutti*"]
 exclude = ["test*", "pic*"]
 
 [tool.setuptools.package-data]
-nlptutti = ["*.txt", "*.md"]
+nlptutti = ["*.txt", "*.md", "py.typed"]

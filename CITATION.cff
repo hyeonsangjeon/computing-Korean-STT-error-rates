@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "Nlptutti를 연구 또는 제품 평가에 사용했다면 이 소프트웨어를 인용해 주세요."
+title: "Nlptutti: Korean STT error-rate evaluation and comparison"
+type: software
+authors:
+  - family-names: Jeon
+    given-names: Hyeon Sang
+    alias: hyeonsangjeon
+version: 0.0.0.20
+date-released: 2026-08-22
+license: MIT
+repository-code: "https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates"
+url: "https://pypi.org/project/nlptutti/"
+keywords:
+  - Korean STT
+  - speech recognition
+  - character error rate
+  - word error rate
+  - named entity evaluation

@@ -1,3 +1,5 @@
-include test/fixtures/entity_reference_implementations.json
-recursive-include test/fixtures/transcripts *.json *.srt *.tsv *.txt
-include docs/structured-transcripts.md
+include CHANGELOG.md CITATION.cff CONTRIBUTING.md SECURITY.md
+recursive-include benchmarks *.py
+recursive-include docs *.json *.md
+recursive-include examples *.json
+recursive-include test/fixtures *.json *.md *.srt *.tsv *.txt

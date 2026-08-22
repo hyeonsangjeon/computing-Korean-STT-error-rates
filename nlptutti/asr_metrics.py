@@ -2,18 +2,23 @@ import re
 import unicodedata
 from collections import Counter
 from typing import (
+    Counter as CounterType,
     Dict,
     Iterable,
     List,
+    Literal,
     Mapping,
     Optional,
     Pattern,
     Sequence,
     Tuple,
     Union,
+    cast,
 )
 
 import jiwer
+
+from nlptutti.alignment import align_sequences
 
 
 def levenshtein(u, v):
@@ -47,6 +52,7 @@ MetricResult = Dict[str, Union[float, int]]
 _KOREAN_TOKEN_CHAR = "0-9A-Za-z가-힣"
 _RATE_MODES = ("normalized", "standard")
 _UNICODE_NORMALIZATION_FORMS = ("NFC", "NFD", "NFKC", "NFKD")
+UnicodeNormalization = Literal["NFC", "NFD", "NFKC", "NFKD"]
 
 
 def get_unicode_code(text):
@@ -137,7 +143,7 @@ def _resolve_rate_mode(rate_mode: str) -> str:
 
 def _resolve_unicode_normalization(
     unicode_normalization: Optional[str],
-) -> Optional[str]:
+) -> Optional[UnicodeNormalization]:
     if unicode_normalization is None:
         return None
     if not isinstance(unicode_normalization, str):
@@ -146,7 +152,7 @@ def _resolve_unicode_normalization(
     normalization_form = unicode_normalization.upper()
     if normalization_form not in _UNICODE_NORMALIZATION_FORMS:
         raise ValueError("unicode_normalization must be None, NFC, NFD, NFKC, or NFKD")
-    return normalization_form
+    return cast(UnicodeNormalization, normalization_form)
 
 
 def _normalize_unicode(text: str, unicode_normalization: Optional[str]) -> str:
@@ -439,77 +445,22 @@ def _align_sequences(
     reference: Sequence[str], hypothesis: Sequence[str]
 ) -> List[Dict[str, str]]:
     """Return an edit path using the same tie-breaking order as ``levenshtein``."""
-    reference_length = len(reference)
-    hypothesis_length = len(hypothesis)
-    costs = [[0] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
-    backtrace = [[None] * (hypothesis_length + 1) for _ in range(reference_length + 1)]
-
-    for ref_index in range(1, reference_length + 1):
-        costs[ref_index][0] = ref_index
-        backtrace[ref_index][0] = "delete"
-    for hyp_index in range(1, hypothesis_length + 1):
-        costs[0][hyp_index] = hyp_index
-        backtrace[0][hyp_index] = "insert"
-
-    for ref_index in range(1, reference_length + 1):
-        for hyp_index in range(1, hypothesis_length + 1):
-            is_equal = reference[ref_index - 1] == hypothesis[hyp_index - 1]
-            candidates = [
-                (
-                    costs[ref_index - 1][hyp_index - 1] + int(not is_equal),
-                    "equal" if is_equal else "substitute",
-                ),
-                (costs[ref_index][hyp_index - 1] + 1, "insert"),
-                (costs[ref_index - 1][hyp_index] + 1, "delete"),
-            ]
-            costs[ref_index][hyp_index], backtrace[ref_index][hyp_index] = min(
-                candidates, key=lambda candidate: candidate[0]
-            )
-
-    alignment = []
-    ref_index = reference_length
-    hyp_index = hypothesis_length
-    while ref_index > 0 or hyp_index > 0:
-        operation = backtrace[ref_index][hyp_index]
-        if operation in ("equal", "substitute"):
-            alignment.append(
-                {
-                    "type": operation,
-                    "reference": reference[ref_index - 1],
-                    "hypothesis": hypothesis[hyp_index - 1],
-                }
-            )
-            ref_index -= 1
-            hyp_index -= 1
-        elif operation == "insert":
-            alignment.append(
-                {
-                    "type": operation,
-                    "reference": "",
-                    "hypothesis": hypothesis[hyp_index - 1],
-                }
-            )
-            hyp_index -= 1
-        else:
-            alignment.append(
-                {
-                    "type": "delete",
-                    "reference": reference[ref_index - 1],
-                    "hypothesis": "",
-                }
-            )
-            ref_index -= 1
-
-    alignment.reverse()
-    return alignment
+    return [
+        {
+            "type": item["type"],
+            "reference": item["reference"],
+            "hypothesis": item["hypothesis"],
+        }
+        for item in align_sequences(reference, hypothesis)
+    ]
 
 
 def _build_error_frequencies(
     alignment: Sequence[Mapping[str, str]],
 ) -> Dict[str, List[Dict[str, Union[str, int]]]]:
-    substitutions = Counter()
-    deletions = Counter()
-    insertions = Counter()
+    substitutions: CounterType[Tuple[str, str]] = Counter()
+    deletions: CounterType[str] = Counter()
+    insertions: CounterType[str] = Counter()
 
     for item in alignment:
         if item["type"] == "substitute":
@@ -756,19 +707,19 @@ def _classification_metrics(
 def _prepare_keyword_entries(
     keywords: Union[str, Sequence[str], Mapping[str, Union[str, Sequence[str]]]],
 ) -> Tuple[List[Tuple[str, Optional[str]]], bool]:
-    entries = []
+    entries: List[Tuple[object, Optional[str]]] = []
     is_labeled = isinstance(keywords, Mapping)
 
     if isinstance(keywords, Mapping):
-        for label, label_keywords in keywords.items():
-            if not isinstance(label, str) or not label.strip():
+        for raw_label, label_keywords in keywords.items():
+            if not isinstance(raw_label, str) or not raw_label.strip():
                 raise ValueError("keyword labels must be non-empty strings")
             values = (
                 [label_keywords]
                 if isinstance(label_keywords, str)
                 else list(label_keywords)
             )
-            entries.extend((keyword, label.strip()) for keyword in values)
+            entries.extend((keyword, raw_label.strip()) for keyword in values)
     else:
         values = [keywords] if isinstance(keywords, str) else list(keywords)
         entries.extend((keyword, None) for keyword in values)
@@ -776,9 +727,9 @@ def _prepare_keyword_entries(
     if not entries:
         raise ValueError("keywords must not be empty")
 
-    prepared_entries = []
+    prepared_entries: List[Tuple[str, Optional[str]]] = []
     canonical_keywords = set()
-    for keyword, label in entries:
+    for keyword, entry_label in entries:
         if not isinstance(keyword, str):
             raise TypeError("every keyword must be a string")
         display_keyword = keyword.strip()
@@ -788,7 +739,7 @@ def _prepare_keyword_entries(
         if canonical_keyword in canonical_keywords:
             raise ValueError("keywords must be unique after whitespace normalization")
         canonical_keywords.add(canonical_keyword)
-        prepared_entries.append((display_keyword, label))
+        prepared_entries.append((display_keyword, entry_label))
     return prepared_entries, is_labeled
 
 
@@ -799,7 +750,7 @@ def _build_keyword_statistics(
     false_positives: int,
     false_negatives: int,
 ) -> Dict[str, Union[float, int]]:
-    statistics = {
+    statistics: Dict[str, Union[float, int]] = {
         "reference_count": reference_count,
         "hypothesis_count": hypothesis_count,
         "true_positives": true_positives,
@@ -861,28 +812,28 @@ def evaluate_keywords(
             counts["false_positives"] += max(hypothesis_count - reference_count, 0)
             counts["false_negatives"] += max(reference_count - hypothesis_count, 0)
 
-    keyword_results = {}
+    keyword_results: Dict[str, Dict[str, object]] = {}
     for keyword, label in entries:
         counts = keyword_counts[keyword]
-        statistics = _build_keyword_statistics(**counts)
+        statistics: Dict[str, object] = dict(_build_keyword_statistics(**counts))
         if is_labeled:
             statistics["label"] = label
         keyword_results[keyword] = statistics
 
     total_reference = sum(
-        result["reference_count"] for result in keyword_results.values()
+        counts["reference_count"] for counts in keyword_counts.values()
     )
     total_hypothesis = sum(
-        result["hypothesis_count"] for result in keyword_results.values()
+        counts["hypothesis_count"] for counts in keyword_counts.values()
     )
     total_true_positives = sum(
-        result["true_positives"] for result in keyword_results.values()
+        counts["true_positives"] for counts in keyword_counts.values()
     )
     total_false_positives = sum(
-        result["false_positives"] for result in keyword_results.values()
+        counts["false_positives"] for counts in keyword_counts.values()
     )
     total_false_negatives = sum(
-        result["false_negatives"] for result in keyword_results.values()
+        counts["false_negatives"] for counts in keyword_counts.values()
     )
     summary = _build_keyword_statistics(
         total_reference,
@@ -892,10 +843,15 @@ def evaluate_keywords(
         total_false_negatives,
     )
 
-    final_result = {"keywords": keyword_results, "summary": summary}
+    final_result: Dict[str, object] = {
+        "keywords": keyword_results,
+        "summary": summary,
+    }
     if is_labeled:
-        label_counts = {}
+        label_counts: Dict[str, Dict[str, int]] = {}
         for keyword, label in entries:
+            if label is None:
+                raise RuntimeError("labeled keywords must have a label")
             if label not in label_counts:
                 label_counts[label] = {
                     "reference_count": 0,
@@ -905,7 +861,7 @@ def evaluate_keywords(
                     "false_negatives": 0,
                 }
             for count_name in label_counts[label]:
-                label_counts[label][count_name] += keyword_results[keyword][count_name]
+                label_counts[label][count_name] += keyword_counts[keyword][count_name]
         final_result["labels"] = {
             label: _build_keyword_statistics(**counts)
             for label, counts in label_counts.items()

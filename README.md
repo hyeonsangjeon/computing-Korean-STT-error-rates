@@ -3,557 +3,223 @@
 [![PyPI version](https://badge.fury.io/py/nlptutti.svg)](https://pypi.org/project/nlptutti/)
 [![Tests](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml/badge.svg)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 [![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
-# Nlptutti: 한국어 STT 오류율 측정 패키지
 
-`nlptutti`는 STT(Speech-to-Text) 시스템의 한국어 출력에 대해 문자 오류율(CER), 단어 오류율(WER), 문자 정답률(CRR), 코퍼스·키워드·개체명 보존 성능을 평가하고 재현 가능한 결과를 남기는 Python 패키지입니다.
-예를 들어 Microsoft의 Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은 클라우드 서비스와 OpenAI Whisper, FunASR 같은 음성 인식 도구가 생성한 인식 문장을 같은 기준으로 평가할 수 있습니다. 일반 문자열뿐 아니라 명시된 계약에 맞는 JSON·SRT·TSV 결과도 입력할 수 있습니다.
-정답 문장(reference)과 인식 문장(hypothesis) 사이의 Levenshtein 최소 편집거리에서 치환, 삭제, 삽입 횟수를 계산합니다.
+# Nlptutti: 한국어 STT 평가 패키지
 
-## CER·WER·CRR과 한국어 정규화, 먼저 구분하기
+`nlptutti`는 한국어 STT(Speech-to-Text) 출력의 CER, WER, CRR, 키워드와
+개체명 보존 성능을 계산하고 여러 시스템의 결과를 재현 가능한 JSON과
+Markdown으로 비교하는 Python 패키지입니다.
 
-`get_cer`, `get_wer`, `get_crr`는 모두 정답 문장을 첫 번째 인자, STT 결과를 두 번째 인자로 받습니다. 다만 평가 단위와 점수 방향이 다릅니다.
-
-| API | 입력과 반환값 | 선택할 때 | 사용 경계 |
-| --- | --- | --- | --- |
-| `get_cer(reference, transcription)` | 문자열 2개 → `cer`, `substitutions`, `deletions`, `insertions` | 한국어 띄어쓰기 차이를 제외하고 문자 전사 품질을 비교할 때 | 공백을 항상 제거하므로 띄어쓰기 품질은 평가하지 못합니다. 낮을수록 좋습니다. |
-| `get_wer(reference, transcription)` | 문자열 2개 → `wer`, `substitutions`, `deletions`, `insertions` | 공백으로 나뉜 단어와 띄어쓰기 차이까지 품질에 포함할 때 | 서로 다른 토큰화 정책의 결과를 그대로 비교하지 마십시오. 낮을수록 좋습니다. |
-| `get_crr(reference, transcription)` | 문자열 2개 → `crr`, `substitutions`, `deletions`, `insertions` | 문자 품질을 높을수록 좋은 보조 지표로 표시할 때 | 별도 정렬 지표가 아니라 `round(1 - CER, 2)`입니다. `standard` 모드에서는 음수가 될 수 있습니다. |
-
-세 함수 모두 기본적으로 문장부호를 제거하는 `rm_punctuation=True`를 사용합니다. 문장부호도 오류로 평가하려면 `False`를 지정하십시오. 여러 문장을 하나의 점수로 보고할 때는 문장별 결과를 단순 평균하기보다 `evaluate_corpus`의 `micro`와 `macro`를 목적에 맞게 사용합니다.
-
-### 이름이 비슷한 두 정규화 옵션
-
-| 옵션 | 기본값 | 실제 동작 |
-| --- | --- | --- |
-| `rate_mode="normalized"` | 기본 | 삽입 오류를 분모에도 넣는 Nlptutti의 기존 오류율 계산식입니다. **입력 문자열은 바꾸지 않습니다.** |
-| `rate_mode="standard"` | 직접 지정 | 참조 길이를 분모로 쓰는 표준 CER·WER 계산식입니다. 논문, 모델 비교, 외부 벤치마크에 권장합니다. |
-| `unicode_normalization=None` | 기본 | 한글 완성형·조합형을 포함한 입력 문자열을 그대로 평가합니다. |
-| `unicode_normalization="NFC"` | 직접 지정 | Unicode 표현 차이를 평가 전에 정규화합니다. 데이터에 조합형이 섞일 수 있을 때만 사용합니다. |
-
-기존 결과를 재현할 때는 기본 `rate_mode="normalized"`를 유지하십시오. 새 비교 실험에서는 `rate_mode="standard"`를 명시하고, 같은 보고서 안에서 두 방식을 섞지 마십시오.
+Microsoft Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은
+클라우드 STT와 OpenAI Whisper, FunASR 같은 오픈소스 도구가 만든 **출력**을
+평가합니다. 음성을 전사하거나 모델을 내려받는 패키지는 아닙니다.
 
 ## 1분 빠른 시작
 
-처음 사용하는 경우에는 설치 확인, CER·WER·CRR 평가, 개체명 보존 평가 순서로 실행하면 됩니다. 아래 예제는 서비스나 모델을 비교할 때 사용하는 표준 계산식인 `rate_mode="standard"`를 명시합니다.
-
-### 1. 설치 확인
+### 1. 설치
 
 ```bash
 python -m pip install -U nlptutti
 python -c "import nlptutti; print('nlptutti ready')"
 ```
 
-`nlptutti ready`가 출력되면 설치와 import가 완료된 것입니다.
+성공하면 `nlptutti ready`가 출력됩니다. Python 3.8부터 3.14까지의 환경을
+CI에서 테스트합니다.
 
-### 2. CER·WER·CRR 첫 평가
+### 2. 한 문장 평가
 
 ```python
 import nlptutti as metrics
 
-reference = "오늘 날씨가 맑습니다"
-hypothesis = "오늘 날씨는 맑습니다"
+result = metrics.get_cer(
+    "오늘 날씨가 맑습니다",
+    "오늘 날씨는 맑습니다",
+    rate_mode="standard",
+)
 
-cer = metrics.get_cer(reference, hypothesis, rate_mode="standard")
-wer = metrics.get_wer(reference, hypothesis, rate_mode="standard")
-crr = metrics.get_crr(reference, hypothesis, rate_mode="standard")
-
-print(round(cer["cer"], 4), cer["substitutions"])  # 0.1111 1
-print(round(wer["wer"], 4), wer["substitutions"])  # 0.3333 1
-print(crr["crr"], crr["substitutions"])            # 0.89 1
+print(round(result["cer"], 4))       # 0.1111
+print(result["substitutions"])       # 1
 ```
 
-CER와 WER는 `0.0`, CRR는 `1.0`이면 정답 문장과 인식 문장이 완전히 일치합니다. 세 결과 딕셔너리에는 해당 점수와 `substitutions`, `deletions`, `insertions`가 함께 들어 있습니다. 이 예제에서는 한 번의 치환이 문자 기준 CER와 단어 기준 WER에 서로 다르게 반영됩니다.
+CER와 WER는 낮을수록 좋고 완전 일치는 `0.0`입니다. CRR은 높을수록 좋고
+완전 일치는 `1.0`입니다.
 
-### 3. 개체명 보존 첫 평가
+### 3. 두 STT 시스템 비교
 
 ```python
 import nlptutti as metrics
 
-report = metrics.evaluate_entities(
-    ["삼성전자가 갤럭시 S26을 공개했다"],
-    ["삼성전자가 갤럭시 S26을 공개했다"],
+report = metrics.compare_systems(
+    ["오늘 날씨가 맑습니다", "서울은 따뜻합니다"],
     {
-        "ORG": ["삼성전자"],
-        "PRODUCT": ["갤럭시 S26"],
+        "baseline": ["오늘 날씨는 맑습니다", "서울은 춥습니다"],
+        "candidate": ["오늘 날씨가 맑습니다", "서울은 따뜻합니다"],
     },
     rate_mode="standard",
 )
 
-print(report["entity_cer"]["micro"])  # 0.0
-print(report["summary"]["f1"])        # 1.0
-print(report["errors"])               # []
+for system in report["systems"]:
+    print(
+        system["id"],
+        round(system["metrics"]["cer"]["micro"], 4),
+        round(system["metrics"]["wer"]["micro"], 4),
+    )
+
+# baseline 0.2353 0.4
+# candidate 0.0 0.0
 ```
 
-`evaluate_entities`는 NER 모델을 실행하지 않습니다. 정답으로 평가할 회사명·인명·상품명 사전을 직접 제공하며, 완전히 보존된 예제의 성공 기준은 Entity CER `0.0`, F1 `1.0`, 빈 오류 목록입니다.
+`micro`는 코퍼스 전체의 편집 횟수를 합산한 점수이고, `macro`는 문장별 점수의
+단순 평균입니다. 논문이나 모델 벤치마크에서는 보통 `rate_mode="standard"`와
+`micro`를 먼저 봅니다.
 
-### 첫 실행 성공 기준
+### 4. JSON과 Markdown으로 저장
 
-| 확인 단계 | 기대 결과 | 판정 기준 |
+저장소의 [`examples/comparison_input.json`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/examples/comparison_input.json)은
+바로 위 Python 예제와 같은 입력입니다.
+
+```bash
+python -c "from urllib.request import urlretrieve; urlretrieve('https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/examples/comparison_input.json', 'comparison_input.json')"
+nlptutti compare comparison_input.json \
+  --rate-mode standard \
+  --output-dir comparison-report
+```
+
+성공하면 다음 두 파일이 생성됩니다.
+
+```text
+comparison-report/report.json
+comparison-report/report.md
+```
+
+`report.json`은 자동화에서 읽는 버전 스키마이고, `report.md`는 사람이 검토할
+표입니다. 입력, 옵션, 패키지 버전이 같으면 실행할 때마다 같은 내용을 만듭니다.
+원문은 기본 보고서에서 빠지며 `include_transcripts=True` 또는
+`--include-transcripts`를 직접 선택해야 포함됩니다.
+
+입력 형식, 오류 처리, paired bootstrap과 결과 해석은
+[시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
+
+## 기본값부터 확인하기
+
+기존 사용자 결과를 바꾸지 않기 위해 정규화 관련 기본값은 그대로 유지합니다.
+
+| 옵션 | 기본값 | 의미 |
 | --- | --- | --- |
-| 설치 | `nlptutti ready` 출력 | import 오류 없이 패키지를 불러옵니다. |
-| CER·WER·CRR | `cer`, `wer`, `crr`와 편집 횟수 반환 | CER·WER `0.0`, CRR `1.0`은 완전 일치입니다. |
-| 개체명 | Entity CER, precision·recall·F1, 오류 목록 반환 | 완전 보존 시 Entity CER `0.0`, F1 `1.0`, `errors == []`입니다. |
+| `rate_mode` | `"normalized"` | 삽입 오류를 분모에도 넣는 Nlptutti 기존 계산식입니다. 입력 문자열을 바꾸는 옵션이 아닙니다. |
+| `rate_mode="standard"` | 직접 지정 | 참조 길이를 분모로 쓰는 표준 CER/WER입니다. 삽입이 많으면 1보다 클 수 있습니다. |
+| `rm_punctuation` | `True` | 평가 전에 문장부호를 제거합니다. CER/CRR은 이 값과 관계없이 공백을 제거합니다. |
+| `unicode_normalization` | `None` | Unicode 표현을 그대로 둡니다. 조합형 혼입을 정리할 때만 `"NFC"` 등을 지정합니다. |
 
-> 기존 결과를 재현할 때는 옵션을 생략해 기본값인 `rate_mode="normalized"`를 유지하십시오. `normalized` 결과와 `standard` 결과를 같은 표에서 직접 비교하지 마십시오.
+기존 결과를 재현할 때는 기본 `normalized`를 유지하고, 새 공식 비교에서는
+`standard`를 직접 지정합니다. 두 모드의 숫자는 같은 열에서 비교하면 안
+됩니다.
 
-더 많은 입력 형식과 옵션은 [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)에서 확인할 수 있습니다.
+## 어떤 함수를 선택할까
 
-### 4. JSON·SRT·TSV 결과 평가
+| 목적 | API | 성공 기준과 경계 |
+| --- | --- | --- |
+| 문자 전사 품질 | `get_cer` | 낮을수록 좋습니다. 공백을 항상 제거하므로 띄어쓰기 자체는 평가하지 않습니다. |
+| 단어·띄어쓰기 포함 품질 | `get_wer` | 낮을수록 좋습니다. 시스템 간 토큰화 정책을 같게 맞춰야 합니다. |
+| 높을수록 좋은 문자 지표 | `get_crr` | `round(1 - CER, 2)`인 보조 지표입니다. 독립 정렬 점수가 아닙니다. |
+| 여러 문장 micro/macro | `evaluate_corpus` | 같은 길이의 reference와 hypothesis 목록이 필요합니다. |
+| 둘 이상의 시스템 비교 | `compare_systems` | 정렬된 입력, 시스템별 점수, pairwise delta를 반환합니다. |
+| 핵심어 누락·오탐 | `evaluate_keywords` | 제공한 키워드 사전의 precision, recall, F1을 계산합니다. |
+| 개체명 구간 품질 | `evaluate_entities` | 제공한 개체명 사전의 Entity CER와 언급 F1을 계산합니다. NER 모델은 아닙니다. |
+| 오류 원인 확인 | `explain_errors` | 문자 또는 단어 정렬과 상위 치환·삭제·삽입을 반환합니다. |
+| JSON·SRT·TSV 평가 | `parse_transcript` + `evaluate_transcript` | 필드와 시간 단위를 검증하고 평가 provenance를 남깁니다. |
 
-STT 모델을 다시 실행하지 않고 이미 생성된 구조화 결과를 읽어 같은 지표로 평가할 수 있습니다. 아래 예제는 JSON의 최상위 `text`를 가설문장으로 사용합니다.
+## 선택 기능
+
+### Paired bootstrap 신뢰구간
+
+문장 쌍을 유지한 채 percentile bootstrap을 실행하면 pairwise CER/WER delta의
+신뢰구간도 보고서에 남습니다. 기본값 `bootstrap=0`에서는 실행하지 않습니다.
 
 ```python
-import nlptutti as metrics
-
-reference = "오늘 날씨가 맑습니다"
-transcript = metrics.parse_transcript(
-    {
-        "text": "오늘 날씨는 맑습니다",
-        "model": "example-model",
-        "language": "ko",
-    },
-    "json",
-)
-report = metrics.evaluate_transcript(
-    reference,
-    transcript,
+report = metrics.compare_systems(
+    references,
+    systems,
     rate_mode="standard",
+    bootstrap=1000,
+    seed=42,
+    confidence=0.95,
 )
-
-print(round(report["metrics"]["cer"]["value"], 4))  # 0.1111
-print(round(report["metrics"]["wer"]["value"], 4))  # 0.3333
-print(report["schema_version"])                      # 1.0
 ```
 
-| 입력 형식 | 평가 문자열 선택 | 시간 정보 처리 |
-| --- | --- | --- |
-| `text`·`txt` | 입력 문자열을 그대로 사용 | 없음 |
-| `json` | 기본적으로 최상위 `text` 사용 | 단위를 추정하지 않고 provenance에 원래 값 보존 |
-| `srt` | cue 텍스트를 순서대로 공백 하나로 연결 | SRT 타임코드를 provenance에만 보존 |
-| `tsv` | `start`, `end`, `text` 헤더를 검증하고 `text` 열 연결 | `start`·`end`를 초 단위로 검증하고 provenance에 보존 |
+### 한국어 오류 진단
 
-JSON에 최상위 `text`가 없을 때만 `json_text_policy="segments_fallback"`을 직접 지정해 `segments[*].text`를 연결할 수 있습니다. 잘못된 구조화 입력은 빈 문장으로 바꾸지 않고 `TranscriptFormatError`를 발생시킵니다. 평가 여권에는 원문 대신 SHA-256과 길이, 실제 계산 옵션, 패키지 버전이 기록됩니다.
+`diagnostic_profile="korean-v1"`을 지정하면 띄어쓰기 경계, 숫자·단위,
+조사·어미 인접 치환, 상위 문자 편집을 따로 보여 줍니다. 전체 CER/WER에는
+영향을 주지 않으며 기본값은 `None`입니다. 숫자·단위와 조사·어미 규칙은
+형태소 분석이 아닌 experimental 단계의 휴리스틱입니다.
 
-파일 읽기, 네 형식별 예제, 반환 JSON 계약과 개인정보 주의사항은 [구조화 STT 결과 평가 안내](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/structured-transcripts.md)를 참조하십시오.
+자세한 규칙과 오분류 가능성은 [한국어 오류 진단 프로필](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/korean-diagnostics.md)에
+정리했습니다.
 
-## 한국어 STT 평가 지표 선택 기준
+### STT 도구별 JSON 읽기
 
-하나의 점수만으로 STT 품질 전체를 설명하기는 어렵습니다. 전체 전사 품질, 도메인 핵심어 보존, 오류 원인처럼 확인하려는 목적에 맞춰 지표를 선택하십시오.
+`parse_provider_transcript()`는 네트워크나 SDK를 사용하지 않고 저장된 JSON만
+읽습니다. 현재 테스트로 확인한 형식은 다음 두 가지입니다.
 
-| 확인하려는 품질 | 권장 API | 필요한 입력 | 적용 기준 |
-| --- | --- | --- | --- |
-| 문자 단위의 전체 전사 품질 | `get_cer` | 정답·인식 문장 한 쌍 | 한국어 띄어쓰기 차이의 영향을 줄여 비교할 때 사용합니다. |
-| 단어 구분을 포함한 전사 품질 | `get_wer` | 정답·인식 문장 한 쌍 | 띄어쓰기와 단어 경계도 품질로 평가할 때 사용합니다. |
-| 높을수록 좋은 문자 정답률 | `get_crr` | 정답·인식 문장 한 쌍 | CER와 함께 대시보드용 보조 지표로 사용합니다. |
-| 여러 문장의 종합 성능 | `evaluate_corpus` | 길이가 같은 문장 목록 두 개 | 데이터셋 전체는 `micro`, 문장별 편차는 `macro`를 확인합니다. |
-| 상품명·명령어 등 핵심어 보존 | `evaluate_keywords` | 문장 목록과 키워드 목록 또는 라벨 사전 | 반복 언급, 누락, 오탐을 precision·recall·F1으로 평가합니다. |
-| 회사명·인명 등 개체명 구간 품질 | `evaluate_entities` | 문장 목록, 개체명 목록 또는 라벨 사전, 선택적 별칭 | Entity CER와 언급 F1을 함께 봅니다. NER 모델을 실행하는 함수는 아닙니다. |
-| 치환·삭제·삽입 원인 분석 | `explain_errors` | 정답·인식 문장 한 쌍과 문자/단어 단위 | 점수 차이를 정렬 결과와 오류 빈도로 진단할 때 사용합니다. |
-| JSON·SRT·TSV 결과의 재현 평가 | `parse_transcript` + `evaluate_transcript` | 정답 문장과 구조화 STT 출력 | 입력 형식, 실제 평가 옵션, 패키지 버전을 함께 기록할 때 사용합니다. |
+- Microsoft Azure Speech short-audio REST `simple` 성공 응답
+- 오픈소스 `openai/whisper`의 `transcribe()` 반환 구조
 
-- 모델이나 STT 서비스의 공식 비교에는 `rate_mode="standard"`와 코퍼스 `micro` 점수를 우선 사용합니다.
-- 기존 결과를 재현해야 할 때는 옵션을 생략해 기본값인 `rate_mode="normalized"`를 유지합니다.
-- 한글 조합형이 섞일 수 있는 입력만 `unicode_normalization="NFC"`를 명시합니다. 기본값은 기존 결과 보호를 위해 `None`입니다.
-- 도메인 핵심 표현이 중요하면 전체 CER/WER에 `evaluate_keywords` 또는 `evaluate_entities`를 함께 보고합니다.
+공급자와 schema version은 반드시 직접 지정해야 하며 자동으로 감지하지
+않습니다. Azure의 다른 REST 형식, OpenAI API, AWS, Google, FunASR 전용 형식은
+현재 지원 범위에 포함되지 않습니다. 일반 text/JSON/SRT/TSV는 특정 공급자에
+종속되지 않는 `parse_transcript()`로 평가할 수 있습니다.
 
-설치부터 각 함수의 입력·출력 예제까지는 [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)에서 확인할 수 있습니다.
+지원 필드와 공식 출처는 [공급자 출력 어댑터](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/provider-adapters.md)에
+정리했습니다.
 
-## 계산식과 호환성
+## 문서
 
-CER과 WER은 자동 음성 인식 시스템의 성능을 측정하는 일반적인 지표입니다. CER은 WER(단어 오류율)과 유사하지만 단어 대신 문자에 대해 작동합니다. 자세한 내용은 WER 문서를 참조하십시오.[1]
-문자 오류율은 다음과 같이 계산할 수 있습니다. 
+- [한국어 사용자 매뉴얼](https://hyeonsangjeon.github.io/job-transcribe/nlptutti/)
+- [시스템 비교와 결과 번들](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)
+- [비교 JSON schema](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison-schema.md)
+- [구조화 STT 결과](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/structured-transcripts.md)
+- [한국어 오류 진단](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/korean-diagnostics.md)
+- [Azure Speech·Whisper 출력 어댑터](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/provider-adapters.md)
+- [정렬 커널과 성능 기준선](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/alignment-performance.md)
+- [공개 채택 지표 기준선과 30·60·90일 검토](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/adoption-baseline.md)
 
----
+이 패키지를 만든 배경과 한국어 ASR/STT 평가 실험은
+[한국어 프롤로그](https://hyeonsangjeon.github.io/job-transcribe/)와
+[영문 글](https://hyeonsangjeon.github.io/job-transcribe/en/)에 정리되어
+있습니다.
 
-<img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/ER_CASE.png" width="90%">
+## 계산식
 
----
-
-<img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" width="70%">
-
----
-
-표준 CER/WER:
-
-~~~text
-(S + D + I) / (S + D + C)
-~~~
-
-Nlptutti 기본 정규화 오류율:
-
-~~~text
-(S + D + I) / (S + D + I + C)
-~~~
-
-- S: 치환(substitution)
-- D: 삭제(deletion)
-- I: 삽입(insertion)
-- C: 올바르게 인식한 문자 또는 단어(hit)
-
-> **호환성 정책:** <code>rate_mode</code>를 생략하면 기존 버전과 동일한 <code>rate_mode="normalized"</code>가 적용됩니다. 표준 CER/WER가 필요한 경우에만 <code>rate_mode="standard"</code>를 명시하십시오. 기본값은 기존 사용자 결과 보호를 위해 변경하지 않습니다.
-
-## 관련 자료
-
-### 국내 관련 발표·기고
-클라우드와 오픈소스 위스퍼를 이용한 한국어 음성 텍스트 변환
-- http://www.itdaily.kr/news/articleView.html?idxno=213297
-- http://www.comworld.co.kr/news/articleView.html?idxno=50818
-
-### 개발 배경 글
-이 패키지를 만들게 된 배경과 한국어 ASR/STT 평가 실험을 정리한 프롤로그 글입니다.
-- Korean: https://hyeonsangjeon.github.io/job-transcribe/
-- English: https://hyeonsangjeon.github.io/job-transcribe/en/
-
-### 사용자 매뉴얼
-설치부터 CER/WER/CRR, 코퍼스 평가, Entity CER·개체명 F1, 키워드 보존 평가, 오류 상세 분석까지 함수별 예제를 제공합니다.
-- Korean manual: https://hyeonsangjeon.github.io/job-transcribe/nlptutti/
-
-## 사용방법
-
-빠른 시작을 확인한 뒤 아래 평가 정책과 API별 예제로 입력·출력 및 세부 옵션을 확장할 수 있습니다.
-
-### 평가 정책
-- 기존 호출의 기본 계산식은 계속 <code>rate_mode="normalized"</code>입니다. 표준식은 <code>rate_mode="standard"</code>를 직접 지정할 때만 사용합니다.
-- 유니코드 정규화는 기존 결과 보호를 위해 기본적으로 적용하지 않습니다. 필요한 경우 <code>unicode_normalization="NFC"</code>를 지정합니다.
-- `get_cer("", "")`, `get_wer("", "")`처럼 참조문장과 가설문장이 모두 비어 있으면 완전 일치로 보고 오류율 `0.0`을 반환합니다.
-- 참조문장은 비어 있고 가설문장만 있는 경우에는 전체를 삽입 오류로 계산합니다.
-- CER/CRR 계산에서는 `rm_punctuation` 값과 관계없이 공백을 제거합니다. `rm_punctuation`은 문장부호 제거 여부만 제어합니다.
-- 키워드 패턴은 정규식 특수문자를 포함한 키워드도 안전하게 처리하며, 긴 단어 내부의 부분문자열 오탐을 줄이기 위해 키워드 앞뒤 경계를 검사합니다.
-- `evaluate_entities`의 별칭은 `aliases`에 직접 지정한 경우에만 정답으로 인정합니다. 발음 유사도나 퍼지 매칭은 자동으로 적용하지 않습니다.
-- `calculate_keyword_error_rate_with_pattern`은 참조문장 리스트와 STT 결과 리스트의 길이가 다르면 `ValueError`를 발생시킵니다.
-
-### CER
-
-```python
-import nlptutti as metrics
-
-refs = "아키택트"
-preds = "아키택쳐"
-result = metrics.get_cer(refs, preds)
-# result -> {"cer": 0.25, "substitutions": 1, "deletions": 0, "insertions": 0}
-```
-
-```python
-import nlptutti as metrics
-
-refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
-preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
-result = metrics.get_cer(refs, preds)
-cer = result['cer']
-substitutions = result['substitutions']
-deletions = result['deletions']
-insertions = result['insertions']
-# prints: [cer, substitutions, deletions, insertions] -> [CER = 0 / 34, S = 0, D = 0, I = 0]
-```
-
-### WER
-
-```python
-import nlptutti as metrics
-
-refs = "대한민국은 주권 국가 입니다."
-preds = "대한민국은 주권국가 입니다."
-result = metrics.get_wer(refs, preds)
-
-wer = result['wer']
-substitutions = result['substitutions']
-deletions = result['deletions']
-insertions = result['insertions']
-# prints: [wer, substitutions, deletions, insertions] -> [WER =  2 / 4, S = 1, D = 1, I = 0]
-```
-
-### CRR
-
-```python
-import nlptutti as metrics
-
-refs = "제이 차 세계 대전은 인류 역사상 가장 많은 인명 피해와 재산 피해를 남긴 전쟁이었다."
-preds = "제이차 세계대전은 인류 역사상 가장많은 인명피해와 재산피해를 남긴 전쟁이었다."
-result = metrics.get_crr(refs, preds)
-crr = result['crr']
-substitutions = result['substitutions']
-deletions = result['deletions']
-insertions = result['insertions']
-# prints: [crr, substitutions, deletions, insertions] -> [CRR = 1 - (0 / 34), S = 0, D = 0, I = 0]
-```
-
-
-### 오류율 분모 방식 선택
-
-`rate_mode`는 입력 문장을 정규화하는 옵션이 아니라 오류율의 분모를 고르는 옵션입니다. 기존 코드와 같은 값이 필요하면 생략하고, 표준 CER/WER를 보고할 때는 <code>rate_mode="standard"</code>를 지정합니다.
-
-~~~python
-import nlptutti as metrics
-
-default_result = metrics.get_cer("STEAM", "STREAM")
-standard_result = metrics.get_cer("STEAM", "STREAM", rate_mode="standard")
-
-print(default_result["cer"])   # 0.16666666666666666
-print(standard_result["cer"])  # 0.2
-~~~
-
-### 코퍼스 평가 (evaluate_corpus)
-
-여러 문장을 한 번에 평가하고 micro/macro CER·WER와 문장 오류율을 확인합니다.
-
-~~~python
-import nlptutti as metrics
-
-report = metrics.evaluate_corpus(
-    ["가나", "다라"],
-    ["가마", "다라바"],
-)
-
-print(report["cer"]["micro"])  # 0.4
-print(report["cer"]["macro"])  # 0.41666666666666663
-~~~
-
-### 개체명 중심 평가 (evaluate_entities)
-
-전체 문장 CER와 별도로 회사명, 사람 이름, 상품명처럼 중요한 개체명 구간의 문자 오류율과 언급 보존 성능을 함께 평가합니다. 논문의 Named Entity WER(NE-WER)처럼 참조 개체명 span에 정렬된 오류만 Entity CER로 집계하되, 한국어에서는 단어 경계의 영향을 줄이기 위해 문자 단위로 계산합니다.[3] 개체명의 추가 인식과 누락은 precision, recall, F1으로 별도 집계합니다.
-
-~~~python
-import nlptutti as metrics
-
-report = metrics.evaluate_entities(
-    ["삼성전자의 갤럭시 S26 발표"],
-    ["삼성전다의 갤럭시 에스 이십육 발표와 애플"],
-    {
-        "ORG": ["삼성전자", "애플"],
-        "PRODUCT": ["갤럭시 S26"],
-    },
-    aliases={
-        "갤럭시 S26": ["갤럭시 에스 이십육"],
-    },
-)
-
-print(report["entity_cer"]["micro"])  # 0.1
-print(report["summary"]["f1"])  # 0.5
-print(report["labels"]["PRODUCT"]["f1"])  # 1.0
-print([(e["type"], e["entity"]) for e in report["errors"]])
-# [("misrecognition", "삼성전자"), ("addition", "애플")]
-~~~
-
-- **Entity CER:** 참조 개체명 span 내부의 치환·삭제·삽입을 문자 단위로 계산합니다. `micro`는 전체 편집 횟수 기반, `macro`는 개체명 언급별 평균입니다.
-- **계산식 선택:** 기존 사용자 호환성을 위해 기본값은 `rate_mode="normalized"`입니다. 논문의 NE-WER처럼 참조 개체명 문자 수를 분모로 보고하려면 `rate_mode="standard"`를 지정합니다. Entity CER는 NE-WER의 문자 단위 응용이며 논문 구현을 그대로 재현한 지표는 아닙니다.
-- **개체명 F1:** 정확한 개체명 언급과 명시적으로 허용한 별칭을 기준으로 추가·누락을 계산합니다.
-- **한국어 처리:** 개체명 내부 띄어쓰기와 기본 조사·어미 결합을 허용합니다. 조사는 Entity CER span에서 제외됩니다.
-- **별칭 정책:** `aliases`는 숫자 읽기나 영문 표기의 허용 가능한 전사형처럼 실제로 같은 개체인 표현만 등록합니다. 등록하지 않은 유사 표현은 오류입니다.
-- **오탐 해석:** 참조에 없는 개체명의 추가 인식은 Entity CER가 아니라 precision/F1과 `errors`의 `addition`으로 확인합니다.
-- **모델 범위:** 이 함수는 NER 모델을 실행하지 않습니다. 사용자가 제공한 개체명 사전을 평가합니다.
-
-NE-WER는 일반 WER를 참조 개체명 단어에 제한한 지표로 설명되며, 최근 Spoken NER 연구의 NEER도 전체 WER를 대체하기보다 도메인 핵심어 분석을 보완하는 지표로 다룹니다.[3][4] ASR 오류와 개체명 인식 오류의 관계를 분석한 연구도 있어 Entity CER와 F1을 함께 확인하는 편이 안전합니다.[5]
-
-### 관련 공개 구현
-
-논문 설명뿐 아니라 실제 계산 코드를 확인하려면 아래 공개 구현을 함께 참고할 수 있습니다. 이름이 비슷한 지표라도 입력 형식, 매칭 정책, 계산 단위가 다르므로 점수를 그대로 서로 비교해서는 안 됩니다.
-
-| 공개 구현 | 실제 제공 기능 | Nlptutti와의 차이 |
-| --- | --- | --- |
-| [ContextASR-Bench 평가 코드](https://github.com/MrSupW/ContextASR-Bench/tree/main/evaluation) / [NVIDIA NeMo-Skills 구현](https://github.com/NVIDIA-NeMo/Skills/blob/main/nemo_skills/evaluation/evaluator/contextasr.py) | 개체명 목록을 이용해 WER, 퍼지 매칭 기반 NE-WER, 정확 일치 기반 NE-FNR 계산 | ContextASR는 개체명 단어열을 퍼지 추출한 뒤 WER를 계산합니다. Nlptutti는 퍼지 매칭을 기본으로 사용하지 않고 한국어 문자 span과 명시적 `aliases`를 평가합니다. |
-| [Teklia `ie-eval`](https://gitlab.teklia.com/ner/metrics/ie-eval) ([ECER/EWER 문서](https://doc.teklia.com/ner_ie_eval/usage/ecer_ewer/)) | BIO 정답·예측 파일로 ECER/EWER와 유형별·순서 독립 점수 계산 | Teklia는 이미 태깅된 NER 출력을 입력받습니다. Nlptutti는 원문 reference/hypothesis와 사용자가 제공한 개체명 사전을 입력받으며 NER 모델을 실행하지 않습니다. |
-| [PIER](https://github.com/enesyugan/PIER-CodeSwitching-Evaluation) | 전체 문장을 정렬한 뒤 참조의 관심 단어 위치에 해당하는 편집만 계산 | PIER는 코드 스위칭 관심 단어를 단어 단위로 평가합니다. Nlptutti Entity CER는 같은 관심 구간 평가 원칙을 한국어 문자 단위로 적용합니다. |
-
-`evaluate_entities`는 위 저장소의 코드를 포팅한 함수가 아니라, NE-WER·ECER·PIER 계열의 공통 평가 원칙을 한국어 원문과 개체명 사전 입력에 맞춰 독립적으로 구현한 API입니다. 공통 계약과 의도적인 차이는 [교차 검증 테스트](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/test_entity_reference_implementations.py)와 [고정 upstream 결과](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/fixtures/entity_reference_implementations.json)에 기록했습니다. 패키지 CI는 외부 저장소를 내려받지 않으며, 검증한 upstream 커밋과 결과를 fixture로 고정해 재현성을 유지합니다.
-
-### 키워드·개체명 보존 평가 (evaluate_keywords)
-
-문장별 실제 언급 횟수를 기준으로 누락과 추가 인식을 함께 집계합니다. 라벨 딕셔너리를 넘기면 ORG, PRODUCT 같은 유형별 결과도 제공합니다. 문자 단위 Entity CER와 별칭, 오류 목록까지 필요하면 `evaluate_entities`를 사용하십시오. 두 함수 모두 키워드·개체명 목록을 평가하며 NER 모델을 실행하지는 않습니다.
-
-~~~python
-import nlptutti as metrics
-
-report = metrics.evaluate_keywords(
-    ["삼성전자와 삼성전자가 협력했다.", "애플이 발표했다."],
-    ["삼성전자가 협력했다.", "애플과 삼성전자가 발표했다."],
-    {"ORG": ["삼성전자", "애플"]},
-)
-
-print(report["keywords"]["삼성전자"]["false_negatives"])  # 1
-print(report["keywords"]["삼성전자"]["false_positives"])  # 1
-print(report["summary"]["f1"])  # 0.6666666666666666
-~~~
-
-### 오류 상세 분석 (explain_errors)
-
-점수만으로 원인을 찾기 어려울 때 문자 또는 단어 단위 정렬과 오류 빈도를 확인합니다.
-
-~~~python
-import nlptutti as metrics
-
-detail = metrics.explain_errors("아키택트", "아키택쳐")
-
-print(detail["counts"])
-# {"hits": 3, "substitutions": 1, "deletions": 0, "insertions": 0}
-
-print(detail["error_frequencies"]["substitutions"])
-# [{"reference": "트", "hypothesis": "쳐", "count": 1}]
-~~~
-
-### 전처리 예 
-
-#### 띄어쓰기 
-가설 또는 정답 텍스트에 일부 전처리 단계를 적용해야 할 수 있습니다. 
-한국어 문장 구성은 단어간 띄어쓰기의 모호성으로 CER계산에서 공백을 계산하지 않았습니다. 근대 이전까지 동양의 언어에는 ‘띄어쓰기’ 개념이 존재하지 않았고, 한국어는 맞춤법 상 띄어쓰기 규칙이 정해져 있기는 하나, 띄어쓰기를 지키지 않아도 문장의 맥락을 이해하는데 큰 무리가 없는 언어입니다.
-따라서 CER 계산에서 입력 변수의 whitespace는 제거합니다. 
-공백 문자는 \t, \n, \r, \x0b 및 \x0c와 whitespace입니다.
-```text
-ref = '또 다른 방법으로 데이터를 읽는 작업과 쓰는 작업을 분리합니다'
-refs ->  또다른방법으로데이터를읽는작업과쓰는작업을분리합니다
-```
-
-#### 구두점 처리 
-STT 인식기에 따라 구두점을 처리하지 않는 경우가 많습니다. 입력 변수의 구두점 필터링은 flag처리로 사용할 수 있습니다. 필터링 기본값은 True입니다. 구두점 문자는: 
+표준 CER/WER는 치환(S), 삭제(D), 삽입(I), 정답 토큰(C)을 사용합니다.
 
 ```text
-구두점 filter-> '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-```
-```python
-import nlptutti as metrics
-refs = "또 다른 방법으로, 데이터를 읽는 작업과 쓰는 작업을 분리합니다!"
-preds = "또! 다른 방법으로 데이터를 읽는 작업과 쓰는 작업을 분리합니다."
-result = metrics.get_wer(refs, preds, rm_punctuation=True)
-
-# prints: wer -> 0.0
+standard:   (S + D + I) / (S + D + C)
+normalized: (S + D + I) / (S + D + I + C)
 ```
 
-### 한국어 키워드 패턴 생성 (make_keyword_pattern)
+구현은 Levenshtein 최소 편집거리를 사용합니다. backtrace가 필요한 오류 설명과
+개체명 평가는 동률일 때 선택 순서가 고정된 같은 정렬 커널을 사용합니다.
 
-`make_keyword_pattern` 함수는 한국어 자연어 처리(NLP)에서 매우 중요한 **형태소의 변이**와 **띄어쓰기 오류**를 robust하게 다루기 위해 설계된 함수입니다.  
-이 함수는 입력한 키워드가 실제 문장 내에서 **조사(예: "의", "에서", "까지" 등)**, **어미(예: "다", "했다" 등)**와 결합하거나, **키워드 내부에 불규칙한 띄어쓰기가 포함**되어 나타나는 다양한 형태 모두를 정규표현식 패턴으로 포괄적으로 인식할 수 있게 해줍니다.
+## 관련 논문과 공개 구현
 
-특히 한국어 음성인식(STT) 결과에서는 띄어쓰기 오류나 조사·어미 결합이 빈번하게 발생해 키워드 매칭이 어렵기 때문에,  
-이 함수를 활용하면 **키워드 기반 오류 분석**이나 **고유명사 인식 평가** 등에서 훨씬 더 정확한 평가가 가능합니다.
+- Galibert et al., [Generating Task-Pertinent sorted Error Lists for Speech Recognition](https://aclanthology.org/L16-1297/), LREC 2016.
+- Le-Duc et al., [Medical Spoken Named Entity Recognition](https://aclanthology.org/2025.naacl-industry.59/), NAACL 2025.
+- Szymański et al., [Why Aren't We NER Yet?](https://aclanthology.org/2023.acl-long.98/), ACL 2023.
+- Gong et al., [BR-ASR](https://www.isca-archive.org/interspeech_2025/gong25_interspeech.html), Interspeech 2025.
+- K et al., [Advocating Character Error Rate for Multilingual ASR Evaluation](https://aclanthology.org/2025.findings-naacl.277/), NAACL 2025 Findings.
+- [ContextASR-Bench 평가 코드](https://github.com/MrSupW/ContextASR-Bench/tree/main/evaluation)
+- [Teklia `ie-eval`](https://gitlab.teklia.com/ner/metrics/ie-eval)
+- [PIER](https://github.com/enesyugan/PIER-CodeSwitching-Evaluation)
 
-```python
-import nlptutti as nt
-from nlptutti.asr_metrics import make_keyword_pattern, COMPLEX_JOSA
+`evaluate_entities()`는 위 구현을 포팅한 코드가 아닙니다. 공통 평가 원칙을
+한국어 문자 span과 `aliases`로 직접 지정하는 별칭 정책에 맞춰 독립 구현했으며
+차이는
+[`test_entity_reference_implementations.py`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/test/test_entity_reference_implementations.py)에
+고정했습니다.
 
-# 조사 리스트 (기본 제공되는 COMPLEX_JOSA 사용 가능)
-josa_list = ["의", "에서", "까지", "도", "만", "를", "을", "은", "는", "이", "가", "와", "과"]
+## 라이선스
 
-# 어미 리스트 (선택사항)
-eomi_list = ["다", "합니다", "했다", "한다", "한다면", "하고"]
-
-# "삼성전자" 키워드에 대한 패턴 생성
-pattern = make_keyword_pattern("삼성전자", josa_list, eomi_list)
-
-# 테스트 문장들
-test_sentences = [
-    "삼성전자",              # True
-    "삼성전자의",            # True  
-    "삼 성 전 자의",         # True (띄어쓰기 있어도 인식)
-    "삼성전자에서부터",       # True (조사 확장 포함)
-    "삼성전자합니다",         # True (어미 결합)
-    "삼성전자 했다",          # True (어미 결합, 띄어쓰기)
-    "애플은"                # False
-]
-
-for sentence in test_sentences:
-    is_matched = bool(pattern.search(sentence))
-    print(f"'{sentence}' → {is_matched}")
-```
-
-**NLP적 의의**  
-- 키워드와 조사, 어미, 띄어쓰기 등 다양한 실제 사용 맥락을 포괄적으로 처리  
-- 형태소 분석 없이도 정규표현식만으로 한국어의 대표적 변이현상(조사·어미 결합, 띄어쓰기 오류 등)에 강건  
-- 음성인식(STT) 결과물, 문서 검색, 정보추출 등에서 **키워드 기반 평가 및 분석의 정밀도**를 크게 향상  
-
-### 기존 문장 단위 키워드 평가 (calculate_keyword_error_rate_with_pattern)
-
-`calculate_keyword_error_rate_with_pattern` 함수는 여러 키워드에 대해 STT 인식 결과와 참조문장을 비교하여,  
-각 키워드별 인식 정확도 및 전체 요약 통계를 제공합니다.  
-조사·어미·띄어쓰기 등 한국어 변형을 유연하게 처리하므로, 고유명사/중요 단어의 STT 인식 품질 평가에 적합합니다.
-
-이 함수는 하위 호환을 위해 유지되는 문장 존재 여부 기반 API입니다. 반복 언급과 false positive까지 평가하려면 <code>evaluate_keywords</code>를 사용하십시오.
-
-```python
-from nlptutti.asr_metrics import calculate_keyword_error_rate_with_pattern, COMPLEX_JOSA
-
-# 조사·어미 리스트 정의 (필요시 확장 가능)
-josa = COMPLEX_JOSA + ["라는", "이라는", "에서의", "으로서의"]
-eomi = ["다", "합니다", "했다", "한다면", "하고", "하는데", "했었다"]
-
-# 참조(정답) 문장과 STT(가설) 문장
-refs = [
-    "오늘은 메리츠화재의 주식이 올랐습니다.",
-    "애플은 새로운 아이폰을 발표했습니다.",
-    "구글에서 검색해보세요.",
-    "메리츠화재까지도 주가가 상승했다."
-]
-hyps = [
-    "오늘은 매리츠화제의 주식이 올랐습니다.",     # 메리츠화재 → 매리츠화제 (오류)
-    "애플은 새로운 아이푼을 발표했습니다.",      # 아이폰 → 아이푼 (오류)
-    "구글에서 검색해보세요.",                  # 정확 인식
-    "메리츠 화재까지도 주가가 상승했다."          # 띄어쓰기 포함, 정확 인식
-]
-keywords = ["메리츠화재", "애플", "구글", "아이폰"]
-
-# 오류율 계산 및 결과 출력
-result = calculate_keyword_error_rate_with_pattern(refs, hyps, keywords, josa, eomi)
-
-print("=== 개별 키워드 결과 ===")
-for k, stats in result["keywords"].items():
-    print(f"'{k}': 총 {stats['total']}회, 정확 {stats['correct']}회, 오류 {stats['errors']}회")
-    print(f"         정확도: {stats['accuracy']:.1%}, 에러율: {stats['error_rate']:.1%}")
-
-print("\n=== 전체 키워드 요약 ===")
-s = result["summary"]
-print(f"전체 키워드 등장 횟수: {s['total_keywords']}")
-print(f"정확히 인식된 키워드: {s['correct_keywords']}")
-print(f"오류가 발생한 키워드: {s['incorrect_keywords']}")
-print(f"전체 키워드 에러율: {s['keyword_error_rate']:.1%}")
-```
-
-**출력 예시**
-```
-=== 개별 키워드 결과 ===
-'메리츠화재': 총 2회, 정확 1회, 오류 1회
-         정확도: 50.0%, 에러율: 50.0%
-'애플': 총 1회, 정확 1회, 오류 0회
-         정확도: 100.0%, 에러율: 0.0%
-'구글': 총 1회, 정확 1회, 오류 0회
-         정확도: 100.0%, 에러율: 0.0%
-'아이폰': 총 1회, 정확 0회, 오류 1회
-         정확도: 0.0%, 에러율: 100.0%
-
-=== 전체 키워드 요약 ===
-전체 키워드 등장 횟수: 5
-정확히 인식된 키워드: 3
-오류가 발생한 키워드: 2
-전체 키워드 에러율: 40.0%
-```
-
-**반환값 구조**
-```python
-{
-    "keywords": {
-        "키워드명": {
-            "total": 등장횟수,           # 참조 문장에서의 총 등장 횟수
-            "correct": 정확개수,         # 정확히 인식된 횟수
-            "errors": 오류횟수,          # 인식 실패 횟수
-            "accuracy": 정확도율,        # correct/total
-            "error_rate": 에러율         # errors/total
-        }
-    },
-    "summary": {
-        "total_keywords": 전체등장횟수,      # 모든 키워드의 총 등장 횟수
-        "correct_keywords": 전체정확횟수,    # 전체 정확히 인식된 횟수
-        "incorrect_keywords": 전체오류횟수,  # 전체 인식 실패 횟수
-        "keyword_error_rate": 전체에러율    # 전체 키워드 에러율
-    }
-}
-```
-
-**NLP적 의미**  
-- 형태소 변이, 띄어쓰기 오류, 조사·어미 결합 등 한국어 STT 결과의 자연스러운 변형을 고려하여 키워드 인식 성능을 신뢰성 있게 평가합니다.
-- 특히 고유명사, 신조어, 전문용어 등 특정 단어의 인식률 분석 시 유용합니다.
-
-### References
-- `[1]`. [Word Error Rate](https://en.wikipedia.org/wiki/Word_error_rate)
-- `[2]`. [Computing error rates, Text Digitisation](https://sites.google.com/site/textdigitisation/qualitymeasures/computingerrorrates)
-- `[3]`. Galibert et al., [Generating Task-Pertinent sorted Error Lists for Speech Recognition](https://aclanthology.org/L16-1297/), LREC 2016. NE-WER를 참조 개체명 span에 제한된 WER로 설명합니다.
-- `[4]`. Le-Duc et al., [Medical Spoken Named Entity Recognition](https://aclanthology.org/2025.naacl-industry.59/), NAACL 2025. WER·KER를 보완하는 Named-Entity-Error-Rate를 논의합니다.
-- `[5]`. Szymański et al., [Why Aren't We NER Yet? Artifacts of ASR Errors in Named Entity Recognition in Spontaneous Speech Transcripts](https://aclanthology.org/2023.acl-long.98/), ACL 2023. ASR 오류와 개체명 인식 오류의 관계 및 오류 유형을 분석합니다.
-- `[6]`. Gong et al., [BR-ASR: Efficient and Scalable Bias Retrieval Framework for Contextual Biasing ASR in Speech LLM](https://www.isca-archive.org/interspeech_2025/gong25_interspeech.html), Interspeech 2025. 일반 WER와 별도로 bias word 성능을 보고합니다.
-- `[7]`. K et al., [Advocating Character Error Rate for Multilingual ASR Evaluation](https://aclanthology.org/2025.findings-naacl.277/), NAACL 2025 Findings. 단어 경계와 형태가 다양한 다국어 ASR에서 CER 병행의 근거를 제시합니다.
+코드는 [MIT License](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/LICENSE)로 배포됩니다. 이 저장소는 STT 모델, 가중치,
+음성 데이터셋을 포함하지 않으며 외부 모델·데이터의 라이선스는 각각 별도로
+확인해야 합니다.

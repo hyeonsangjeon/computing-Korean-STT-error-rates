@@ -1,0 +1,67 @@
+name: 지표 정확성 문제
+description: CER·WER·CRR·키워드·개체명 계산의 재현 가능한 문제를 보고합니다.
+title: "[Metric] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        민감한 실제 transcript 대신 사람이 직접 계산할 수 있는 작은 합성 문장을 사용해 주세요.
+  - type: input
+    id: version
+    attributes:
+      label: Nlptutti와 Python 버전
+      placeholder: nlptutti 0.0.0.20 / Python 3.12
+    validations:
+      required: true
+  - type: dropdown
+    id: metric
+    attributes:
+      label: 지표/API
+      options:
+        - get_cer
+        - get_wer
+        - get_crr
+        - evaluate_corpus
+        - evaluate_keywords
+        - evaluate_entities
+        - compare_systems
+        - explain_errors
+        - parse/evaluate transcript
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 최소 재현 코드
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: 평가 옵션
+      description: rate_mode, rm_punctuation, unicode_normalization과 관련 옵션을 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 결과와 수기 계산
+      description: 기대 점수와 치환·삭제·삽입 횟수, 사용한 분모를 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 결과
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 개인정보 확인
+      options:
+        - label: 합성 입력이며 실제 사용자·고객 transcript나 비공개 정보를 포함하지 않았습니다.
+          required: true

@@ -15,11 +15,22 @@ class TestReleaseMetadata(unittest.TestCase):
         version_match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
         self.assertIsNotNone(version_match)
         version = version_match.group(1)
-        self.assertEqual(version, "0.0.0.20")
+        self.assertEqual(version, "0.0.0.21")
         self.assertIn("## [{}] - 2026-08-22".format(version), changelog)
         self.assertIn("version: {}".format(version), citation)
         self.assertIn("date-released: 2026-08-22", citation)
         self.assertIn("Development Status :: 4 - Beta", pyproject)
+
+    def test_readme_keeps_official_formula_hero(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn(
+            "https://raw.githubusercontent.com/hyeonsangjeon/"
+            "computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png",
+            readme,
+        )
+        self.assertIn('alt="표준 CER·WER와 Nlptutti normalized 오류율 공식"', readme)
+        self.assertTrue((ROOT / "pic" / "FORMULA_CASE.png").is_file())
 
     def test_zero_one_release_is_explicitly_deferred(self):
         policy = (ROOT / "docs" / "release-policy.md").read_text(encoding="utf-8")

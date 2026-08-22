@@ -14,6 +14,10 @@ Microsoft Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은
 클라우드 STT와 OpenAI Whisper, FunASR 같은 오픈소스 도구가 만든 **출력**을
 평가합니다. 음성을 전사하거나 모델을 내려받는 패키지는 아닙니다.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" alt="표준 CER·WER와 Nlptutti normalized 오류율 공식" width="640">
+</p>
+
 ## 1분 빠른 시작
 
 ### 1. 설치

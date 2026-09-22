@@ -16,8 +16,21 @@ Nlptutti의 다중 STT 비교 결과는 `nlptutti.comparison/1.0` 스키마를 �
 | `pairwise` | 입력 순서에 따른 두 시스템 간 점수 차이 |
 | `warnings` | 결과를 해석할 때 확인할 구조화된 경고 |
 
-기본 결과에는 reference와 hypothesis 원문이 포함되지 않는다. 원문 저장은
-`include_transcripts=True`를 명시한 경우에만 `raw_inputs`에 추가된다.
+문장 전체는 `include_transcripts=True`일 때만 `raw_inputs`에 추가된다.
+기본 상세 결과의 개체명 오류 구간이나 진단 토큰은 별개이므로 이 옵션을
+모든 텍스트의 비공개 보장으로 해석하면 안 된다.
+
+0.0.0.23부터 `options.privacy_mode`를 기록한다. 이전 결과에서 이 필드가
+없으면 `detailed`로 해석한다. 기본 `detailed`는 기존 상세 결과를 보존한다.
+선택적 `aggregate` 모드에서만 다음 필드가 달라진다.
+
+- 시스템 ID와 pairwise ID는 입력 순서에 따른 `system-1`, `system-2` 등으로 바뀐다.
+- `keywords`에는 `summary`만 남는다.
+- `entities`에는 `summary`, `entity_cer`, `rate_mode`, `rm_punctuation`, `unicode_normalization`, `aliases_enabled`만 남는다.
+- 진단 `top_character_edits`는 `redacted: true`와 세 가지 편집의 빈 목록을 가진다. 실제 토큰과 `limit`은 생략한다.
+- `raw_inputs`는 허용하지 않는다. 점수·fingerprint와 그 밖의 집계는 동일하다.
+
+이 생략은 새 모드를 직접 선택한 결과에만 적용한다. 해시는 익명화를 보장하지 않는다.
 
 ## 안정성 원칙
 

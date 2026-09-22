@@ -33,6 +33,10 @@ transcript = metrics.parse_transcript("오늘 날씨가 맑습니다", "text")
 
 ## JSON
 
+0.0.0.23부터 직렬화된 JSON의 중복 키와 NaN/Infinity, 범위를 넘는 실수는
+`TranscriptFormatError`로 거부합니다. 잘못된 UTF-8 bytes도 거부합니다.
+이미 Python dict로 변환하면서 사라진 중복 키는 확인할 수 없습니다.
+
 기본값은 최상위 `text` 문자열만 평가 입력으로 사용합니다. `file`, `model`, `language`, `duration_s`가 실제로 있으면 결과의 provenance에 보존합니다.
 
 ```python

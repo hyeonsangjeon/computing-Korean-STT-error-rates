@@ -4,6 +4,10 @@
 transcript 구조로 바꿉니다. 네트워크 요청, 인증, SDK 호출, 모델 실행은 하지
 않습니다. 공급자와 스키마도 자동으로 감지하지 않습니다.
 
+0.0.0.23부터 직렬화된 JSON의 중복 키와 NaN/Infinity, 범위를 넘는 실수는
+`TranscriptFormatError`로 거부합니다. 이미 dict로 바뀌며 사라진 중복 키는
+확인할 수 없으므로 원본 응답 문자열을 전달하는 편이 안전합니다.
+
 ## Azure Speech
 
 현재 지원 범위는 short-audio REST API의 `simple` 성공 응답입니다.

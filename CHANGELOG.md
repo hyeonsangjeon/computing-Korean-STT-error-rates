@@ -2,6 +2,29 @@
 
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
+## [0.0.0.23] - 2026-09-22
+
+### 수정
+- `include_transcripts=False`가 개체명 오류 구간이나 진단 토큰까지 숨긴다는 잘못된 안내를 수정하고, 상세 평가 사용 시 공유 전 경고를 추가했습니다.
+- 비교 API의 Unicode 정규화 설정을 키워드 평가에도 전달합니다. 키워드·문장·조사·어미를 같은 형식으로 변환하고 실제 규칙을 설정 fingerprint에 반영합니다.
+- NFD/NFKD에서 분해된 자모를 단어 경계로 잘못 판단하던 문제를 수정했습니다. `서울대학교`를 `서울` 개체명으로 세지 않으며 `서울은`의 허용 조사 처리는 유지합니다.
+- CLI·일반 JSON·공급자 JSON의 중복 키와 NaN/Infinity·범위를 넘는 실수를 거부합니다. 잘못된 UTF-8 입력은 CLI 오류로 안내합니다.
+- sdist에 공식 이미지·이슈 템플릿·workflow·검증 스크립트가 빠지던 문제를 수정했습니다.
+
+### 추가
+- `privacy_mode="aggregate"`와 CLI `--privacy-mode aggregate`를 추가했습니다. 사전·라벨·오류 텍스트·진단 토큰을 제외하고 시스템 이름을 `system-1` 순서로 바꾸며 점수와 fingerprint는 유지합니다. 원문 포함 옵션과 함께 쓸 수 없습니다.
+- `evaluate_keywords`와 `make_keyword_pattern`에 선택적 `unicode_normalization` 인자를 추가했습니다. 반환 키는 입력한 표기를 유지하며 정규화 후 중복 사전 항목은 오류로 알립니다.
+
+### 호환성
+- 기존 상세 결과를 사용하는 코드가 깨지지 않도록 `privacy_mode` 기본값은 `"detailed"`입니다. 외부 공유에는 `"aggregate"`를 직접 지정하세요. 어느 모드도 해시나 집계값의 익명성을 보장하지 않습니다.
+- `rate_mode="normalized"`, `rm_punctuation=True`, `unicode_normalization=None`과 단독 개체명 평가의 반환 구조는 그대로입니다. 키워드 매칭은 구두점을 제거하지 않습니다.
+- comparison schema 1.0을 유지하고 `options.privacy_mode`를 추가합니다. 집계 모드를 선택한 결과에서만 선택적 상세 필드를 생략합니다.
+- Python 3.8 소스 빌드를 유지합니다. 3.8 빌더는 기존 MIT License 필드를, 최신 빌더는 SPDX License-Expression을 사용합니다. 런타임 의존성은 늘리지 않았습니다.
+
+### 검증
+- 민감 문자열의 하위 필드 노출, 네 가지 Unicode 정규화, 별칭·접미사·긴 단어 경계, 중복 JSON과 CLI 실패 종료의 회귀 테스트를 추가했습니다.
+- CI에서 sdist를 별도 디렉터리에 풀어 테스트하고 소스 배포본과 wheel을 각각 설치해 빠른 시작을 실행합니다.
+
 ## [0.0.0.22] - 2026-08-22
 
 ---

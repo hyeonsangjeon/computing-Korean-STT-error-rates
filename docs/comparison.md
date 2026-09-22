@@ -84,14 +84,58 @@ nlptutti compare examples/comparison_input.json \
 | `rate_mode` | `"normalized"` | 기존 Nlptutti 분모를 보존합니다. 공식 비교는 `"standard"`를 직접 지정합니다. |
 | `rm_punctuation` | `True` | 문장부호를 제거합니다. CLI에서는 `--keep-punctuation`으로 끕니다. |
 | `unicode_normalization` | `None` | Unicode 원문을 유지합니다. 필요한 경우에만 NFC/NFD/NFKC/NFKD를 지정합니다. |
-| `include_transcripts` | `False` | 원문을 보고서에서 제외합니다. |
+| `include_transcripts` | `False` | 문장 전체를 담는 `raw_inputs`를 만들지 않습니다. 상세 평가의 오류 텍스트까지 숨기는 옵션은 아닙니다. |
+| `privacy_mode` | `"detailed"` | 기존 상세 결과를 유지합니다. 외부 공유에는 `"aggregate"`를 직접 지정합니다. |
 | `bootstrap` | `0` | paired bootstrap을 끕니다. 양의 정수로 켭니다. |
 | `seed` | `42` | bootstrap 난수 seed입니다. |
 | `confidence` | `0.95` | percentile 신뢰구간의 confidence입니다. |
 | `diagnostic_profile` | `None` | 한국어 진단을 끕니다. 켜려면 `"korean-v1"`을 지정합니다. |
 
-기본값을 변경하지 않으므로 기존 API 결과는 그대로 유지됩니다. 보고서의
-`options`에는 실제 적용한 모든 값이 기록됩니다.
+정규화 기본값은 유지하며 `options`에 실제 적용한 값을 기록합니다.
+Unicode 정규화는 키워드·개체명 사전과 조사·어미에도 적용합니다.
+키워드 매칭은 `rm_punctuation`과 관계없이 구두점을 유지합니다.
+
+## 공유할 보고서 만들기
+
+0.0.0.23부터 사용할 수 있습니다. 기본 `detailed`는 기존 결과를 보존하므로
+사전 이름·라벨, 개체명 오류 구간, 한국어 진단 토큰이 포함될 수 있습니다.
+`include_transcripts=False`만으로 모든 텍스트가 숨겨지는 것은 아닙니다.
+
+```python
+import nlptutti as metrics
+
+report = metrics.compare_systems(
+    ["김민수"],
+    {
+        "baseline": ["김민서"],
+        "candidate": ["김민수"],
+    },
+    entities=["김민수"],
+    privacy_mode="aggregate",
+)
+systems = report["systems"]
+print([system["id"] for system in systems])
+# ['system-1', 'system-2']
+summary = systems[1]["entities"]["summary"]
+print(summary["f1"])  # 1.0
+```
+
+집계 모드는 점수와 fingerprint를 유지하고 사전별·라벨별 상세와 개체명 오류
+목록을 생략합니다. 진단 편집 토큰은 빈 목록과 `redacted=True`로 표시합니다.
+Markdown에는 오류가 없다는 뜻의 `-` 대신 `[redacted]`가 나타납니다.
+시스템 ID도 입력 순서대로 바꾸므로 실제 시스템과의 대응을 따로 기록하세요.
+CLI에서는 `--privacy-mode aggregate`를 사용합니다.
+
+집계 모드와 `include_transcripts=True`는 함께 쓸 수 없습니다. 해시는 알려진
+짧은 문장과 대조할 수 있고 집계에도 정보가 남으므로 익명화 수단으로 보지 않습니다.
+
+## JSON 입력 오류
+
+중복 객체 키는 마지막 값으로 덮어쓰지 않고 거부합니다. 정답 ID, 시스템명,
+`text` 등 어느 위치의 중복도 오류이며 NaN/Infinity와 범위를 넘는 실수도
+허용하지 않습니다. CLI는 설명과 종료 코드 2를 반환하고 보고서를 만들지 않습니다.
+이미 Python dict가 되면서 사라진 중복 키는 복구할 수 없으므로 원본 JSON
+문자열을 CLI나 파서에 그대로 전달하세요.
 
 ## Paired bootstrap
 

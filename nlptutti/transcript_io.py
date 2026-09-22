@@ -9,6 +9,7 @@ import re
 from importlib import metadata
 from typing import Dict, List, Mapping, Optional, Tuple, Union
 
+from nlptutti._json import load_json
 from nlptutti.asr_metrics import (
     _resolve_rate_mode,
     _resolve_unicode_normalization,
@@ -137,16 +138,15 @@ def _parse_json(
     if json_text_policy not in _JSON_TEXT_POLICIES:
         raise ValueError("json_text_policy must be 'text' or 'segments_fallback'")
 
+    document: object
     if isinstance(data, Mapping):
         document = data
     else:
         serialized = _decode_text(data, "JSON")
         try:
-            document = json.loads(serialized)
-        except json.JSONDecodeError as error:
-            raise TranscriptFormatError(
-                f"invalid JSON transcript at line {error.lineno}, column {error.colno}"
-            ) from error
+            document = load_json(serialized)
+        except ValueError as error:
+            raise TranscriptFormatError(str(error)) from error
 
     if not isinstance(document, Mapping):
         raise TranscriptFormatError("JSON transcript must be an object")

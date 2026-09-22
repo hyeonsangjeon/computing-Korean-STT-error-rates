@@ -154,6 +154,8 @@ def _optional_summaries(report: ComparisonReport) -> str:
 
 def _top_substitutions(diagnostics: Mapping[str, object]) -> str:
     top_edits = cast(Mapping[str, object], diagnostics["top_character_edits"])
+    if top_edits.get("redacted"):
+        return "[redacted]"
     rows = cast(list, top_edits["substitutions"])
     if not rows:
         return "-"
@@ -211,11 +213,18 @@ def render_comparison_markdown(report: ComparisonReport) -> str:
     warning_lines = (
         "\n".join(f"- {warning}" for warning in warnings) if warnings else "- None."
     )
-    privacy = (
-        "Raw transcripts are included by explicit opt-in."
-        if "raw_inputs" in report
-        else "Raw transcripts are excluded; only fingerprints and aggregate results are stored."
-    )
+    if options.get("privacy_mode") == "aggregate":
+        privacy = (
+            "Aggregate mode excludes text details and replaces system IDs. "
+            "Fingerprints and scores are not an anonymization guarantee."
+        )
+    elif "raw_inputs" in report:
+        privacy = "Raw transcripts are included by explicit opt-in."
+    else:
+        privacy = (
+            "Raw transcripts are excluded from raw_inputs; system IDs and optional "
+            "keyword/entity/diagnostic details may contain text."
+        )
     return """# Nlptutti comparison report
 
 - Schema: `{schema}`

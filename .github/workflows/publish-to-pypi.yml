@@ -205,6 +205,7 @@ jobs:
               "nlptutti",
               "pyproject.toml",
               "requirements.txt",
+              "setup.py",
           ]
           tag_check = subprocess.run(
               ["git", "rev-parse", "--verify", f"refs/tags/{version}^{{commit}}"],

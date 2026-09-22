@@ -204,6 +204,8 @@ def _prepare_definitions(
     }
     aliases_by_entity = _prepare_aliases(entries, aliases, unicode_normalization)
     _validate_surface_ownership(canonical_texts, aliases_by_entity)
+    josa_list = [_normalize_unicode(value, unicode_normalization) for value in josa_list]
+    eomi_list = [_normalize_unicode(value, unicode_normalization) for value in eomi_list]
 
     definitions = [
         _EntityDefinition(

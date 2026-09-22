@@ -1,5 +1,18 @@
 # 릴리스와 0.1.0 안정성 정책
 
+## Python 3.8 소스 빌드와 라이선스
+
+`0.0.0.23`부터 라이선스 값은 작은 `setup.py`에서 빌더 버전에 맞게 전달합니다.
+버전·의존성·패키지 설명은 계속 `pyproject.toml` 한 곳에서 관리합니다.
+Python 3.8은 해당 환경을 지원하는 setuptools 70.1~75.3 계열로 빌드하며
+기존 `License: MIT`를 사용합니다. 3.9 이상 빌더는 setuptools 77 이상에서
+`License-Expression: MIT`를 기록합니다. 두 경우 모두 LICENSE 원문을 포함합니다.
+
+[setuptools의 SPDX 지원은 77부터](https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html)라서
+최신 표기만 일괄 적용하지 않습니다. CI에서 지원 Python별 sdist 테스트,
+sdist 설치, wheel 설치와 빠른 시작을 모두 확인합니다. runtime의 지원 버전과
+의존성은 이 메타데이터 전환으로 바꾸지 않습니다.
+
 ## 현재 판단
 
 `0.0.0.20`은 새 comparison API, CLI, `nlptutti.comparison/1.0` schema가 처음
@@ -34,7 +47,7 @@ patch 배포만으로 `0.1.0` 조건이 끝나는 것은 아니며 실제 호환
 2. 공개된 patch 사이에서 기존 metric 기본값과 golden 결과가 유지됩니다.
 3. Python 3.8~3.14 test, wheel/sdist build, `twine check`, 깨끗한 wheel smoke가 통과합니다.
 4. README, PyPI 설명, GitHub Pages의 첫 실행 fixture와 기대값이 일치합니다.
-5. JSON/Markdown 결정성, 원문 기본 제외, 진단 토큰 경고가 회귀 테스트로 유지됩니다.
+5. JSON/Markdown 결정성, `raw_inputs` 기본 제외, 상세 평가의 텍스트 경고와 집계 전용 모드가 회귀 테스트로 유지됩니다.
 6. paired bootstrap의 방법과 한계가 문서화되고 실제 사용자 오류 보고를 검토합니다.
 7. 지원 provider/schema와 비지원 범위를 명시하고 자동 감지를 추가하지 않습니다.
 8. CHANGELOG, migration note, CITATION version, GitHub Release, PyPI metadata가 같은 버전을 가리킵니다.

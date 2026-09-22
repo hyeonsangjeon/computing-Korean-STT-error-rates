@@ -1,11 +1,11 @@
 """Command-line interface for Nlptutti."""
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Dict, Mapping, Optional, Sequence, Tuple
 
+from nlptutti._json import load_json
 from nlptutti.comparison import TextCollection, compare_systems
 from nlptutti.reporting import render_comparison_json, write_comparison_bundle
 
@@ -43,13 +43,11 @@ def _load_comparison_input(
     path: Path,
 ) -> Tuple[TextCollection, Dict[str, TextCollection]]:
     try:
-        document = json.loads(path.read_text(encoding="utf-8-sig"))
+        document = load_json(path.read_text(encoding="utf-8-sig"))
     except OSError as error:
         raise ValueError(f"could not read input file: {error}") from error
-    except json.JSONDecodeError as error:
-        raise ValueError(
-            f"invalid JSON at line {error.lineno}, column {error.colno}"
-        ) from error
+    except UnicodeDecodeError as error:
+        raise ValueError("comparison input must be valid UTF-8") from error
     if not isinstance(document, Mapping):
         raise ValueError("comparison input must be a JSON object")
     if "references" not in document or "systems" not in document:
@@ -101,6 +99,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="keep punctuation during metric preprocessing",
     )
     compare.add_argument(
+        "--privacy-mode",
+        choices=("aggregate", "detailed"),
+        default="detailed",
+        help="aggregate removes text details and replaces system IDs; detailed preserves compatibility",
+    )
+    compare.add_argument(
         "--include-transcripts",
         action="store_true",
         help="include raw reference and hypothesis text in the JSON report",
@@ -142,6 +146,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             confidence=arguments.confidence,
             diagnostic_profile=arguments.diagnostic_profile,
             include_transcripts=arguments.include_transcripts,
+            privacy_mode=arguments.privacy_mode,
         )
         serialized = render_comparison_json(report)
         if arguments.output is not None and arguments.output_dir is not None:

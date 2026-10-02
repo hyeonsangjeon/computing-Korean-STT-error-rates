@@ -12,7 +12,7 @@ class EvaluatorInfo(TypedDict):
     version: str
 
 
-class ComparisonOptions(TypedDict):
+class ComparisonOptionsRequired(TypedDict):
     rate_mode: str
     rm_punctuation: bool
     unicode_normalization: Optional[str]
@@ -20,6 +20,10 @@ class ComparisonOptions(TypedDict):
     bootstrap_seed: int
     confidence: float
     diagnostic_profile: Optional[str]
+
+
+class ComparisonOptions(ComparisonOptionsRequired, total=False):
+    privacy_mode: str
 
 
 class DatasetInfo(TypedDict):

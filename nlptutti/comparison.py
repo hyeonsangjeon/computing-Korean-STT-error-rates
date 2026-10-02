@@ -195,6 +195,7 @@ def _evaluation_config(
     keywords: Optional[KeywordInput],
     entities: Optional[KeywordInput],
     entity_aliases: Optional[Mapping[str, Union[str, Sequence[str]]]],
+    unicode_normalization: Optional[str],
 ) -> EvaluationConfig:
     if entity_aliases is not None and entities is None:
         raise ValueError("entity_aliases requires entities")
@@ -203,25 +204,26 @@ def _evaluation_config(
     )
     fingerprint = None
     if configured:
-        fingerprint = _fingerprint(
-            {
-                "keywords": (
-                    None
-                    if keywords is None
-                    else _canonical_config_value(keywords, "keywords")
-                ),
-                "entities": (
-                    None
-                    if entities is None
-                    else _canonical_config_value(entities, "entities")
-                ),
-                "entity_aliases": (
-                    None
-                    if entity_aliases is None
-                    else _canonical_config_value(entity_aliases, "entity_aliases")
-                ),
-            }
-        )
+        config = {
+            "keywords": (
+                None
+                if keywords is None
+                else _canonical_config_value(keywords, "keywords")
+            ),
+            "entities": (
+                None
+                if entities is None
+                else _canonical_config_value(entities, "entities")
+            ),
+            "entity_aliases": (
+                None
+                if entity_aliases is None
+                else _canonical_config_value(entity_aliases, "entity_aliases")
+            ),
+        }
+        if keywords is not None and unicode_normalization is not None:
+            config["keyword_unicode_normalization"] = unicode_normalization
+        fingerprint = _fingerprint(config)
     return {
         "keywords": keywords is not None,
         "entities": entities is not None,
@@ -329,6 +331,44 @@ def _pairwise_results(
     return results
 
 
+def _aggregate_only(report: ComparisonReport) -> None:
+    """Remove text-bearing optional results from a newly built report."""
+    system_ids = {
+        system["id"]: "system-{}".format(index + 1)
+        for index, system in enumerate(report["systems"])
+    }
+    for system in report["systems"]:
+        system["id"] = system_ids[system["id"]]
+        if "keywords" in system:
+            system["keywords"] = {"summary": system["keywords"]["summary"]}
+        if "entities" in system:
+            system["entities"] = {
+                key: system["entities"][key]
+                for key in (
+                    "summary", "entity_cer", "rate_mode",
+                    "rm_punctuation", "unicode_normalization", "aliases_enabled",
+                )
+            }
+        if "diagnostics" in system:
+            diagnostics = system["diagnostics"]
+            system["diagnostics"] = {
+                key: diagnostics[key]
+                for key in (
+                    "schema", "profile", "rules", "spacing_boundary",
+                    "number_unit", "josa_eomi_adjacent", "metric_breakdowns",
+                )
+            }
+            system["diagnostics"]["top_character_edits"] = {
+                "redacted": True,
+                "substitutions": [],
+                "deletions": [],
+                "insertions": [],
+            }
+    for pair in report["pairwise"]:
+        pair["baseline"] = system_ids[pair["baseline"]]
+        pair["candidate"] = system_ids[pair["candidate"]]
+
+
 def compare_systems(
     references: TextCollection,
     systems: Mapping[str, TextCollection],
@@ -345,19 +385,26 @@ def compare_systems(
     confidence: float = 0.95,
     diagnostic_profile: Optional[str] = None,
     include_transcripts: bool = False,
+    privacy_mode: str = "detailed",
 ) -> ComparisonReport:
     """Compare two or more aligned STT outputs without running an STT model.
 
     ``references`` and every system may be ordered string iterables. For an
     ID-aligned corpus, pass mappings with exactly the same ID set. Raw text is
-    excluded from the returned report unless ``include_transcripts=True`` is
-    explicitly requested.
+    excluded from ``raw_inputs`` unless ``include_transcripts=True`` is
+    requested. The backward-compatible ``privacy_mode="detailed"`` can still
+    contain system IDs, dictionary names, and error text. Choose ``aggregate``
+    to remove those details without changing scores. Hashes are not anonymization.
     """
 
     if not isinstance(rm_punctuation, bool):
         raise TypeError("rm_punctuation must be a boolean")
     if not isinstance(include_transcripts, bool):
         raise TypeError("include_transcripts must be a boolean")
+    if privacy_mode not in ("aggregate", "detailed"):
+        raise ValueError("privacy_mode must be 'aggregate' or 'detailed'")
+    if privacy_mode == "aggregate" and include_transcripts:
+        raise ValueError("aggregate privacy_mode cannot include transcripts")
     if diagnostic_profile not in (None, KOREAN_DIAGNOSTIC_PROFILE):
         raise ValueError("diagnostic_profile must be None or 'korean-v1'")
     if isinstance(bootstrap, bool) or not isinstance(bootstrap, int) or bootstrap < 0:
@@ -377,7 +424,9 @@ def compare_systems(
         references, ids
     )
     system_values = _coerce_systems(systems, reference_ids, references_use_ids)
-    evaluation_config = _evaluation_config(keywords, entities, entity_aliases)
+    evaluation_config = _evaluation_config(
+        keywords, entities, entity_aliases, resolved_unicode_normalization
+    )
 
     system_results: List[ComparisonSystem] = []
     item_statistics: Dict[str, MetricStatistics] = {}
@@ -398,7 +447,10 @@ def compare_systems(
         }
         if keywords is not None:
             result["keywords"] = evaluate_keywords(
-                reference_values, hypotheses, keywords
+                reference_values,
+                hypotheses,
+                keywords,
+                unicode_normalization=resolved_unicode_normalization,
             )
         if entities is not None:
             result["entities"] = evaluate_entities(
@@ -440,6 +492,7 @@ def compare_systems(
             "bootstrap_seed": seed,
             "confidence": confidence,
             "diagnostic_profile": diagnostic_profile,
+            "privacy_mode": privacy_mode,
         },
         "dataset": {
             "item_count": len(reference_values),
@@ -458,10 +511,17 @@ def compare_systems(
         ),
         "warnings": warnings,
     }
-    if diagnostic_profile is not None:
+    if privacy_mode == "aggregate":
+        _aggregate_only(report)
         warnings.append(
-            "diagnostics can include observed character edit tokens; "
-            "review the bundle before sharing"
+            "aggregate mode removes text details and replaces system IDs; "
+            "fingerprints and scores are not an anonymization guarantee"
+        )
+    elif keywords is not None or entities is not None or diagnostic_profile is not None:
+        warnings.append(
+            "detailed mode can contain keyword/entity names, labels, entity error "
+            "text and diagnostic edit tokens even when include_transcripts=False; "
+            "use privacy_mode='aggregate' before sharing"
         )
     if include_transcripts:
         warnings.append(

@@ -49,7 +49,11 @@ def levenshtein(u, v):
 
 MetricResult = Dict[str, Union[float, int]]
 
-_KOREAN_TOKEN_CHAR = "0-9A-Za-z가-힣"
+_KOREAN_TOKEN_CHAR = (
+    "0-9A-Za-z가-힣"
+    "\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff"
+    "\u0300-\u036f"
+)
 _RATE_MODES = ("normalized", "standard")
 _UNICODE_NORMALIZATION_FORMS = ("NFC", "NFD", "NFKC", "NFKD")
 UnicodeNormalization = Literal["NFC", "NFD", "NFKC", "NFKD"]
@@ -643,6 +647,8 @@ def make_keyword_pattern(
     keyword: str,
     josa_list: Optional[Sequence[str]] = None,
     eomi_list: Optional[Sequence[str]] = None,
+    *,
+    unicode_normalization: Optional[str] = None,
 ) -> Pattern:
     """키워드와 조사·어미 목록으로 안전한 정규식 패턴을 생성합니다.
 
@@ -650,6 +656,8 @@ def make_keyword_pattern(
         keyword (str): 키워드 문자열
         josa_list (list of str, optional): 조사 리스트. 생략하면 COMPLEX_JOSA 사용
         eomi_list (list of str, optional): 어미 리스트
+        unicode_normalization (str, optional): 패턴의 Unicode 형식. 직접 검색할
+            문자열도 같은 형식으로 변환해야 합니다. evaluate_keywords는 이를 함께 처리합니다.
 
     Returns:
         re.Pattern: 생성된 정규 표현식 패턴
@@ -662,7 +670,10 @@ def make_keyword_pattern(
     if not isinstance(keyword, str):
         raise TypeError("keyword must be a string")
 
-    compact_keyword = re.sub(r"\s+", "", keyword)
+    unicode_normalization = _resolve_unicode_normalization(unicode_normalization)
+    compact_keyword = re.sub(
+        r"\s+", "", _normalize_unicode(keyword, unicode_normalization)
+    )
     if not compact_keyword:
         raise ValueError("keyword must not be empty")
 
@@ -670,7 +681,10 @@ def make_keyword_pattern(
     keyword_pattern = r"\s*".join(re.escape(char) for char in compact_keyword)
     if josa_list is None:
         josa_list = COMPLEX_JOSA
-    suffix_pattern = _make_suffix_pattern(josa_list, eomi_list)
+    suffix_pattern = _make_suffix_pattern(
+        [_normalize_unicode(value, unicode_normalization) for value in josa_list],
+        [_normalize_unicode(value, unicode_normalization) for value in (eomi_list or ())],
+    )
 
     if suffix_pattern:
         full_pattern = (
@@ -769,6 +783,8 @@ def evaluate_keywords(
     keywords: Union[str, Sequence[str], Mapping[str, Union[str, Sequence[str]]]],
     josa_list: Optional[Sequence[str]] = None,
     eomi_list: Optional[Sequence[str]] = None,
+    *,
+    unicode_normalization: Optional[str] = None,
 ) -> Dict[str, object]:
     """Evaluate keyword mention preservation with optional entity labels.
 
@@ -776,15 +792,33 @@ def evaluate_keywords(
     positives, missing reference mentions become false negatives, and extra
     hypothesis mentions become false positives. This evaluates a supplied
     keyword list; it does not run an NER model.
+
+    Unicode normalization is opt-in and applies to texts, keywords, and
+    suffixes. Result keys retain the supplied keyword spelling. Punctuation
+    is not removed by this mention matcher.
     """
     references, hypotheses = _coerce_sentence_pairs(
         reference_sentences, hypothesis_sentences
     )
     entries, is_labeled = _prepare_keyword_entries(keywords)
+    unicode_normalization = _resolve_unicode_normalization(unicode_normalization)
+    canonical_keywords = [
+        re.sub(r"\s+", "", _normalize_unicode(keyword, unicode_normalization))
+        for keyword, _ in entries
+    ]
+    if len(set(canonical_keywords)) != len(canonical_keywords):
+        raise ValueError(
+            "keywords must be unique after Unicode and whitespace normalization"
+        )
     resolved_josa = COMPLEX_JOSA if josa_list is None else josa_list
     resolved_eomi = COMPLEX_EOMI if eomi_list is None else eomi_list
     patterns = {
-        keyword: make_keyword_pattern(keyword, resolved_josa, resolved_eomi)
+        keyword: make_keyword_pattern(
+            keyword,
+            resolved_josa,
+            resolved_eomi,
+            unicode_normalization=unicode_normalization,
+        )
         for keyword, _ in entries
     }
 
@@ -800,6 +834,8 @@ def evaluate_keywords(
     }
 
     for reference, hypothesis in zip(references, hypotheses):
+        reference = _normalize_unicode(reference, unicode_normalization)
+        hypothesis = _normalize_unicode(hypothesis, unicode_normalization)
         for keyword, pattern in patterns.items():
             reference_count = sum(1 for _ in pattern.finditer(reference))
             hypothesis_count = sum(1 for _ in pattern.finditer(hypothesis))

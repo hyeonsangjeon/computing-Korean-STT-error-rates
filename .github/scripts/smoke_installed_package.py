@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 from importlib import metadata
 from pathlib import Path
 
@@ -97,6 +98,31 @@ def _verify_console_script():
     assert "| candidate | 0.000000 |" in markdown_report
 
 
+def _verify_hardening():
+    nfd = unicodedata.normalize("NFD", "서울")
+    report = metrics.compare_systems(
+        ["서울"], {"private-a": [nfd], "private-b": ["서울"]},
+        keywords=["서울"], entities=["서울"],
+        unicode_normalization="NFC", privacy_mode="aggregate",
+    )
+    assert report["systems"][0]["keywords"]["summary"]["recall"] == 1
+    assert report["systems"][0]["id"] == "system-1"
+    assert "서울" not in metrics.render_comparison_json(report)
+    assert "private-a" not in metrics.render_comparison_markdown(report)
+    result = metrics.evaluate_entities(
+        ["서울대학교"], ["서울대학교"], ["서울"], unicode_normalization="NFD"
+    )
+    assert result["summary"]["reference_count"] == 0
+    try:
+        metrics.parse_transcript('{"text":"first","text":"second"}', "json")
+    except metrics.TranscriptFormatError:
+        pass
+    else:
+        raise AssertionError("installed parser accepted duplicate JSON keys")
+    package_metadata = metadata.metadata("nlptutti")
+    assert (package_metadata.get("License-Expression") or package_metadata.get("License")) == "MIT"
+
+
 def main():
     _verify_imported_from_installation()
     _verify_readme_fixture()
@@ -136,6 +162,7 @@ def main():
     assert report["provenance"]["source"]["format"] == "json"
     _verify_compare_api()
     _verify_console_script()
+    _verify_hardening()
     print(f"verified installed nlptutti {report['evaluator']['version']}")
 
 

@@ -101,8 +101,15 @@ comparison-report/report.md
 
 `report.json`은 자동화에서 읽는 버전 스키마이고, `report.md`는 사람이 검토할
 표입니다. 입력, 옵션, 패키지 버전이 같으면 실행할 때마다 같은 내용을 만듭니다.
-원문은 기본 보고서에서 빠지며 `include_transcripts=True` 또는
-`--include-transcripts`를 직접 선택해야 포함됩니다.
+문장 전체를 담는 `raw_inputs`는 `include_transcripts=True` 또는
+`--include-transcripts`를 선택할 때만 추가됩니다. 다만 기존 상세 모드에는
+키워드·개체명 이름, 개체명 오류 구간, 진단 토큰이 남을 수 있습니다.
+
+**0.0.0.23부터 외부 공유용 보고서는 `privacy_mode="aggregate"` 또는
+`--privacy-mode aggregate`를 지정하세요.** 사전·라벨·오류 텍스트를 제외하고
+시스템 이름도 `system-1`, `system-2`로 바꿉니다. 점수는 그대로이며 원문 포함
+옵션과 함께 쓸 수 없습니다. 기존 코드 호환을 위해 기본값은 `"detailed"`로
+유지합니다. 해시와 집계값만 남겨도 익명성이 보장되는 것은 아닙니다.
 
 입력 형식, 오류 처리, paired bootstrap과 결과 해석은
 [시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
@@ -117,6 +124,10 @@ comparison-report/report.md
 | `rate_mode="standard"` | 직접 지정 | 참조 길이를 분모로 쓰는 표준 CER/WER입니다. 삽입이 많으면 1보다 클 수 있습니다. |
 | `rm_punctuation` | `True` | 평가 전에 문장부호를 제거합니다. CER/CRR은 이 값과 관계없이 공백을 제거합니다. |
 | `unicode_normalization` | `None` | Unicode 표현을 그대로 둡니다. 조합형 혼입을 정리할 때만 `"NFC"` 등을 지정합니다. |
+
+비교 API에서 선택한 Unicode 정규화는 키워드·개체명 사전과 조사·어미에도
+적용합니다. 단독 `evaluate_keywords`에서도 같은 옵션을 선택할 수 있습니다.
+키워드 매칭은 구두점을 제거하지 않으므로 `C++`와 `C`를 다르게 봅니다.
 
 기존 결과를 재현할 때는 기본 `normalized`를 유지하고, 새 공식 비교에서는
 `standard`를 직접 지정합니다. 두 모드의 숫자는 같은 열에서 비교하면 안

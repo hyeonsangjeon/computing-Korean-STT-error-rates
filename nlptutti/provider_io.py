@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import math
 from typing import Dict, List, Mapping, Union
 
+from nlptutti._json import load_json
 from nlptutti.transcript_io import TranscriptFormatError
 
 
@@ -33,12 +33,10 @@ def _load_document(payload: ProviderInput, provider: str) -> Mapping[str, object
         raise TypeError("provider payload must be a mapping, str, or bytes")
 
     try:
-        document = json.loads(serialized)
-    except json.JSONDecodeError as error:
+        document = load_json(serialized)
+    except ValueError as error:
         raise TranscriptFormatError(
-            "invalid {} JSON at line {}, column {}".format(
-                provider, error.lineno, error.colno
-            )
+            "invalid {} JSON: {}".format(provider, error)
         ) from error
     if not isinstance(document, Mapping):
         raise TranscriptFormatError("{} payload must be a JSON object".format(provider))

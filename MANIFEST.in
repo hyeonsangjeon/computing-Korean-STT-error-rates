@@ -1,4 +1,9 @@
 include CHANGELOG.md CITATION.cff CONTRIBUTING.md SECURITY.md
+include setup.py
+recursive-include pic *.png
+recursive-include .github/ISSUE_TEMPLATE *.yml
+recursive-include .github/workflows *.yml
+recursive-include .github/scripts *.py
 recursive-include benchmarks *.py
 recursive-include docs *.json *.md
 recursive-include examples *.json

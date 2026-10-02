@@ -15,6 +15,7 @@ RELEASE_FILES = {
     "README.md",
     "pyproject.toml",
     "requirements.txt",
+    "setup.py",
 }
 RELEASE_PREFIXES = ("nlptutti/",)
 

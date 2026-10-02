@@ -397,7 +397,8 @@ def compare_systems(
             reference_values, hypotheses, rm_punctuation,
             resolved_unicode_normalization,
         )
-        item_statistics[system_id] = statistics
+        if bootstrap or include_items or labels is not None:
+            item_statistics[system_id] = statistics
         result: ComparisonSystem = {
             "id": system_id,
             "metrics": summarize_statistics(statistics, resolved_rate_mode),

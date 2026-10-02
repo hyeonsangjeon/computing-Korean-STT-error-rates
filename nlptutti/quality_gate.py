@@ -142,7 +142,7 @@ def evaluate_quality_gate(
                 actual, threshold, rel_tol=0, abs_tol=NUMERIC_TOLERANCE
             ):
                 reasons.append(
-                    "{} exceeded: observed={:.12g}, limit={:.12g}".format(
+                    "{} not satisfied: observed={:.12g}, limit={:.12g}".format(
                         key, actual, threshold
                     )
                 )

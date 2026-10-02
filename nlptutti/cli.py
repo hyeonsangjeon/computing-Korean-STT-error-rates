@@ -1,13 +1,17 @@
 """Command-line interface for Nlptutti."""
 
 import argparse
+import json
+import pkgutil
 import sys
 from pathlib import Path
 from typing import Dict, Mapping, Optional, Sequence, Tuple
 
 from nlptutti._json import load_json
 from nlptutti.comparison import TextCollection, compare_systems
-from nlptutti.reporting import render_comparison_json, write_comparison_bundle
+from nlptutti.manifest import load_comparison_manifest, load_evaluation_config, read_json_file
+from nlptutti.quality_gate import evaluate_quality_gate
+from nlptutti.reporting import _write_atomic, render_comparison_json, write_comparison_bundle
 
 
 def _item_list_to_mapping(values: object, field_name: str) -> Dict[str, str]:
@@ -69,11 +73,22 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Evaluate and compare Korean STT transcripts offline.",
     )
     subparsers = parser.add_subparsers(dest="command")
+    sample = subparsers.add_parser("sample", help="emit the installed version's offline example corpus")
+    sample.add_argument("--output", type=Path, help="write UTF-8 JSON instead of standard output")
+    gate = subparsers.add_parser("gate", help="check an existing report against explicit quality limits")
+    gate.add_argument("input", type=Path, help="comparison report JSON")
+    gate.add_argument("--policy", type=Path, required=True)
+    gate.add_argument("--output", type=Path, help="write decision JSON; exit 3 means regression")
     compare = subparsers.add_parser(
         "compare",
         help="compare two or more systems from a JSON corpus",
     )
     compare.add_argument("input", type=Path, help="UTF-8 comparison corpus JSON")
+    compare.add_argument("--input-format", choices=("corpus", "manifest"), default="corpus")
+    compare.add_argument("--evaluation-config", type=Path, help="JSON keywords, entities and entity_aliases")
+    compare.add_argument("--include-items", action="store_true", help="include per-item scores and source IDs (detailed mode only)")
+    compare.add_argument("--labels", type=Path, help="JSON mapping from item ID to user-defined labels")
+    compare.add_argument("--top-n", type=int, default=10, help="maximum item IDs per improvement/regression list")
     compare.add_argument(
         "--output",
         type=Path,
@@ -134,7 +149,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
     try:
-        references, systems = _load_comparison_input(arguments.input)
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
+        if arguments.command == "sample":
+            data = pkgutil.get_data("nlptutti", "comparison_sample.json")
+            if data is None:
+                raise ValueError("installed sample data is missing")
+            serialized = json.dumps(load_json(data.decode("utf-8")), ensure_ascii=False, indent=2) + "\n"
+            if arguments.output is not None:
+                arguments.output.parent.mkdir(parents=True, exist_ok=True)
+                _write_atomic(arguments.output, serialized)
+            else:
+                sys.stdout.write(serialized)
+            return 0
+        if arguments.command == "gate":
+            decision = evaluate_quality_gate(read_json_file(arguments.input), read_json_file(arguments.policy))
+            serialized = json.dumps(decision, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True) + "\n"
+            if arguments.output is not None:
+                arguments.output.parent.mkdir(parents=True, exist_ok=True)
+                _write_atomic(arguments.output, serialized)
+            else:
+                sys.stdout.write(serialized)
+            return 0 if decision["passed"] else 3
+        if arguments.output is not None and arguments.output_dir is not None:
+            raise ValueError("--output and --output-dir cannot be used together")
+        sources = None
+        references: TextCollection
+        systems: Dict[str, TextCollection]
+        if arguments.input_format == "manifest":
+            references, file_systems, sources = load_comparison_manifest(arguments.input)
+            systems = dict(file_systems)
+        else:
+            references, systems = _load_comparison_input(arguments.input)
+        config = load_evaluation_config(arguments.evaluation_config) if arguments.evaluation_config is not None else {}
         report = compare_systems(
             references,
             systems,
@@ -147,10 +194,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             diagnostic_profile=arguments.diagnostic_profile,
             include_transcripts=arguments.include_transcripts,
             privacy_mode=arguments.privacy_mode,
+            include_items=arguments.include_items,
+            labels=read_json_file(arguments.labels) if arguments.labels is not None else None,
+            top_n=arguments.top_n,
+            **config,
         )
+        if sources is not None:
+            for source, system in zip(sources["systems"], report["systems"]):
+                source["id"] = system["id"]
+            report["input_sources"] = sources
         serialized = render_comparison_json(report)
-        if arguments.output is not None and arguments.output_dir is not None:
-            raise ValueError("--output and --output-dir cannot be used together")
         if arguments.output_dir is not None:
             paths = write_comparison_bundle(report, arguments.output_dir)
             sys.stdout.write(
@@ -158,10 +211,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         elif arguments.output is not None:
             arguments.output.parent.mkdir(parents=True, exist_ok=True)
-            arguments.output.write_text(serialized, encoding="utf-8")
+            _write_atomic(arguments.output, serialized)
         else:
             sys.stdout.write(serialized)
-    except (TypeError, ValueError) as error:
+    except (TypeError, ValueError, OSError) as error:
         parser.error(str(error))
     return 0
 

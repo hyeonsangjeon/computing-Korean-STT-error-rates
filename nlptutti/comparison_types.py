@@ -112,6 +112,49 @@ class RawInputs(TypedDict):
     systems: List[RawSystemInput]
 
 
+class ItemResult(TypedDict):
+    id: str
+    metrics: SystemMetrics
+
+
+class DetailSystem(TypedDict):
+    id: str
+    items: List[ItemResult]
+
+
+class ItemDelta(TypedDict):
+    id: str
+    deltas: Dict[str, float]
+
+
+class PairwiseDetail(TypedDict):
+    baseline: str
+    candidate: str
+    items: List[ItemDelta]
+    top_regressions: Dict[str, List[str]]
+    top_improvements: Dict[str, List[str]]
+
+
+class ComparisonDetails(TypedDict):
+    schema: str
+    top_n: int
+    systems: List[DetailSystem]
+    pairwise: List[PairwiseDetail]
+
+
+class SliceSystem(TypedDict):
+    id: str
+    metrics: SystemMetrics
+
+
+class SliceReport(TypedDict):
+    field: str
+    value: str
+    item_count: int
+    systems: List[SliceSystem]
+    pairwise: List[PairwiseDelta]
+
+
 class ComparisonReportRequired(TypedDict):
     schema: str
     evaluator: EvaluatorInfo
@@ -125,6 +168,10 @@ class ComparisonReportRequired(TypedDict):
 
 class ComparisonReport(ComparisonReportRequired, total=False):
     raw_inputs: RawInputs
+    input_sources: Dict[str, object]
+    details: ComparisonDetails
+    slices: List[SliceReport]
+    labels_sha256: str
 
 
 __all__ = [

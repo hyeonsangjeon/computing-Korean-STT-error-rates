@@ -9,6 +9,21 @@ from nlptutti.cli import main
 
 
 class TestCli(unittest.TestCase):
+    def test_sample_output_and_unicode_crlf_replace(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(main(["sample"]), 0)
+        expected = json.loads(output.getvalue())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "비교 입력.json"
+            self.assertEqual(main(["sample", "--output", str(path)]), 0)
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), expected)
+            path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+            result = Path(directory) / "결과.json"
+            result.write_text("old", encoding="utf-8")
+            self.assertEqual(main(["compare", str(path), "--output", str(result)]), 0)
+            self.assertEqual(json.loads(result.read_text(encoding="utf-8"))["dataset"]["item_count"], 2)
+
     def test_compare_prints_json_for_ordered_collections(self):
         document = {
             "references": ["가", "나"],

@@ -402,7 +402,9 @@ def evaluate_corpus(
 
     ``micro`` aggregates edit counts before calculating the rate. ``macro`` is
     the unweighted average of sentence-level rates. The normalized historical
-    Nlptutti rate remains the default.
+    Nlptutti rate remains the default. Historical ``perfect_sentences`` and
+    ``sentence_error_rate`` use CER preprocessing (including whitespace removal).
+    ``word_perfect_sentences`` and ``word_sentence_error_rate`` use WER tokens.
     """
     references, hypotheses = _coerce_sentence_pairs(
         reference_sentences, hypothesis_sentences
@@ -434,6 +436,7 @@ def evaluate_corpus(
         wer_measurements.append(_measure_wer(wer_reference, wer_hypothesis))
 
     utterances = len(references)
+    word_errors = sum(sum(measurement[1:]) > 0 for measurement in wer_measurements)
     return {
         "utterances": utterances,
         "rate_mode": rate_mode,
@@ -442,6 +445,9 @@ def evaluate_corpus(
         "wer": _summarize_measurements(wer_measurements, rate_mode),
         "perfect_sentences": utterances - sentence_errors,
         "sentence_error_rate": sentence_errors / utterances,
+        "sentence_error_unit": "character",
+        "word_perfect_sentences": utterances - word_errors,
+        "word_sentence_error_rate": word_errors / utterances,
     }
 
 

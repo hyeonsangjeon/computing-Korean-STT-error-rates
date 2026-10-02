@@ -84,9 +84,11 @@ for system in report["systems"]:
 
 저장소의 [`examples/comparison_input.json`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/examples/comparison_input.json)은
 바로 위 Python 예제와 같은 입력입니다.
+0.0.0.24부터 설치본에 같은 예제가 들어 있습니다. 설치 후에는 모델이나
+GitHub 파일을 내려받지 않고 다음 두 명령만 실행하면 됩니다.
 
 ```bash
-python -c "from urllib.request import urlretrieve; urlretrieve('https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/examples/comparison_input.json', 'comparison_input.json')"
+nlptutti sample --output comparison_input.json
 nlptutti compare comparison_input.json \
   --rate-mode standard \
   --output-dir comparison-report
@@ -114,6 +116,13 @@ comparison-report/report.md
 입력 형식, 오류 처리, paired bootstrap과 결과 해석은
 [시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
 
+### 다음 평가로 이어가기 (0.0.0.24부터)
+
+- [저장된 STT 파일 비교](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/file-comparison.md): text·JSON·SRT·TSV와 명시적 Azure/Whisper 응답을 파일 목록으로 연결합니다.
+- [문장·조건별 변화 확인](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/item-comparison.md): 숫자·띄어쓰기·이름 예제로 상위 악화 문장과 사용자 라벨별 점수를 읽습니다.
+- [CI 품질 기준 검사](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/quality-gate.md): 지정한 허용치를 넘으면 별도 `gate` 명령이 종료 코드 3을 반환합니다.
+- [Bootstrap 해석 범위](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/bootstrap-interpretation.md): 소표본·같은 화자·폭이 0인 구간을 해석할 때의 제한입니다.
+
 ## 기본값부터 확인하기
 
 기존 사용자 결과를 바꾸지 않기 위해 정규화 관련 기본값은 그대로 유지합니다.
@@ -134,6 +143,10 @@ comparison-report/report.md
 됩니다.
 
 ## 어떤 함수를 선택할까
+
+`evaluate_corpus`의 기존 문장 오류율은 공백을 제거한 **문자 기준**입니다.
+0.0.0.24부터 띄어쓰기까지 구분하는 `word_sentence_error_rate`도 반환합니다.
+[문자·어절 기준 예제와 보고서 검증](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/corpus-and-validation.md)을 참고하세요.
 
 | 목적 | API | 성공 기준과 경계 |
 | --- | --- | --- |

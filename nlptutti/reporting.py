@@ -3,21 +3,14 @@
 import json
 import os
 import tempfile
+from threading import RLock
 from pathlib import Path
 from typing import Dict, Mapping, Union, cast
 
-from nlptutti.comparison_types import COMPARISON_SCHEMA, ComparisonReport
+from nlptutti.comparison_types import ComparisonReport
+from nlptutti.report_validation import validate_comparison_report as _validate_report
 
-
-def _validate_report(report: Mapping[str, object]) -> None:
-    if not isinstance(report, Mapping):
-        raise TypeError("report must be a comparison report mapping")
-    if report.get("schema") != COMPARISON_SCHEMA:
-        raise ValueError(f"report schema must be {COMPARISON_SCHEMA!r}")
-    if not isinstance(report.get("systems"), list):
-        raise ValueError("report systems must be a list")
-    if not isinstance(report.get("pairwise"), list):
-        raise ValueError("report pairwise must be a list")
+_WRITE_LOCK = RLock()
 
 
 def render_comparison_json(report: ComparisonReport) -> str:
@@ -250,7 +243,7 @@ CRR deltas mean the candidate has a higher recognition rate.
 
 {optional_summaries}
 
-{diagnostic_section}## Provenance
+{detail_section}{slice_section}{diagnostic_section}## Provenance
 
 - IDs SHA-256: `{ids_sha256}`
 - References SHA-256: `{references_sha256}`
@@ -275,12 +268,47 @@ CRR deltas mean the candidate has a higher recognition rate.
         pairwise_table=_pairwise_table(report),
         optional_summaries=_optional_summaries(report),
         diagnostic_section=_diagnostic_section(report),
+        detail_section=_detail_section(report),
+        slice_section=_slice_section(report),
         ids_sha256=dataset["ids_sha256"],
         references_sha256=dataset["references_sha256"],
         evaluation_config_sha256=(evaluation_config["sha256"] or "none"),
         privacy=privacy,
         warning_lines=warning_lines,
     )
+
+
+def _detail_section(report: ComparisonReport) -> str:
+    if "details" not in report:
+        return ""
+    lines = ["## Item changes", "", "IDs may contain sensitive text. Full per-item edit counts are in JSON.", "",
+             "| Baseline | Candidate | Metric | Direction | Item ID | Delta |",
+             "| --- | --- | --- | --- | --- | ---: |"]
+    for pair in report["details"]["pairwise"]:
+        by_id = {row["id"]: row["deltas"] for row in pair["items"]}
+        for ranking, direction in ((pair["top_regressions"], "regression"), (pair["top_improvements"], "improvement")):
+            for metric in ("cer", "wer"):
+                for item_id in ranking[metric]:
+                    lines.append("| {} | {} | {} | {} | {} | {} |".format(
+                        _table_text(pair["baseline"]), _table_text(pair["candidate"]), metric.upper(), direction,
+                        _table_text(item_id), _format_number(by_id[item_id][metric])))
+    return "\n".join(lines) + "\n\n"
+
+
+def _slice_section(report: ComparisonReport) -> str:
+    if "slices" not in report:
+        return ""
+    lines = ["## User-labelled slices", "", "Labels are supplied by the caller, not inferred from audio. Small slices are descriptive only.", "",
+             "| Field | Value | Items | System | CER micro | WER micro | CRR micro |",
+             "| --- | --- | ---: | --- | ---: | ---: | ---: |"]
+    for slice_ in report["slices"]:
+        for system in slice_["systems"]:
+            metrics = system["metrics"]
+            lines.append("| {} | {} | {} | {} | {} | {} | {} |".format(
+                _table_text(slice_["field"]), _table_text(slice_["value"]), slice_["item_count"],
+                _table_text(system["id"]), _format_number(metrics["cer"]["micro"]),
+                _format_number(metrics["wer"]["micro"]), _format_number(metrics["crr"]["micro"])))
+    return "\n".join(lines) + "\n\n"
 
 
 def _write_atomic(path: Path, content: str) -> None:
@@ -297,7 +325,8 @@ def _write_atomic(path: Path, content: str) -> None:
         ) as stream:
             temporary = Path(stream.name)
             stream.write(content)
-        os.replace(str(temporary), str(path))
+        with _WRITE_LOCK:
+            os.replace(str(temporary), str(path))
     except BaseException:
         if temporary is not None:
             try:
@@ -313,12 +342,16 @@ def write_comparison_bundle(
 ) -> Dict[str, Path]:
     """Write deterministic ``report.json`` and ``report.md`` files."""
 
+    json_content = render_comparison_json(report)
+    markdown_content = render_comparison_markdown(report)
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     json_path = destination / "report.json"
     markdown_path = destination / "report.md"
-    _write_atomic(json_path, render_comparison_json(report))
-    _write_atomic(markdown_path, render_comparison_markdown(report))
+    # Windows cannot replace a destination concurrently; keep in-process pairs together.
+    with _WRITE_LOCK:
+        _write_atomic(json_path, json_content)
+        _write_atomic(markdown_path, markdown_content)
     return {"json": json_path, "markdown": markdown_path}
 
 

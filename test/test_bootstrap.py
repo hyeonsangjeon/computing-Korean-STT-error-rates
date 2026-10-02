@@ -5,6 +5,17 @@ import nlptutti as nt
 
 
 class TestPairedBootstrap(unittest.TestCase):
+    def test_cautionary_warnings_do_not_change_intervals(self):
+        report = nt.compare_systems(["가", "나"], {"a": ["가", "나"], "b": ["가", "나"]}, bootstrap=20)
+        warnings = " ".join(report["warnings"])
+        self.assertIn("fewer than 10", warnings)
+        self.assertIn("fewer than 1000", warnings)
+        self.assertIn("zero width", warnings)
+        self.assertIn("speaker", warnings)
+        interval = report["pairwise"][0]["metrics"]["cer"]["confidence_interval"]
+        self.assertEqual((interval["lower"], interval["upper"]), (0, 0))
+        self.assertEqual(interval["sampling_unit"], "utterance")
+
     def test_same_seed_produces_identical_intervals(self):
         arguments = (
             ["가", "나", "다"],

@@ -15,10 +15,10 @@ class TestReleaseMetadata(unittest.TestCase):
         version_match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
         self.assertIsNotNone(version_match)
         version = version_match.group(1)
-        self.assertEqual(version, "0.0.0.23")
-        self.assertIn("## [{}] - 2026-09-22".format(version), changelog)
+        self.assertEqual(version, "0.0.0.24")
+        self.assertIn("## [{}] - 2026-10-02".format(version), changelog)
         self.assertIn("version: {}".format(version), citation)
-        self.assertIn("date-released: 2026-09-22", citation)
+        self.assertIn("date-released: 2026-10-02", citation)
         self.assertIn("Development Status :: 4 - Beta", pyproject)
 
     def test_readme_keeps_official_formula_hero(self):

@@ -18,6 +18,8 @@ from nlptutti.reporting import (
     render_comparison_markdown,
     write_comparison_bundle,
 )
+from nlptutti.report_validation import validate_comparison_report
+from nlptutti.quality_gate import evaluate_quality_gate
 from nlptutti.transcript_io import (
     TranscriptFormatError,
     evaluate_transcript,
@@ -39,6 +41,7 @@ __all__ = [
     "evaluate_corpus",
     "evaluate_entities",
     "evaluate_keywords",
+    "evaluate_quality_gate",
     "evaluate_transcript",
     "explain_errors",
     "get_cer",
@@ -50,4 +53,5 @@ __all__ = [
     "render_comparison_json",
     "render_comparison_markdown",
     "write_comparison_bundle",
+    "validate_comparison_report",
 ]

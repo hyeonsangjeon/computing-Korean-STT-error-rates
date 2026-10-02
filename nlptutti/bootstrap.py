@@ -10,8 +10,9 @@ from nlptutti.asr_metrics import (
     _measure_wer,
     _preprocess_cer_text,
     _preprocess_wer_text,
+    _summarize_measurements,
 )
-from nlptutti.comparison_types import ConfidenceInterval
+from nlptutti.comparison_types import AggregateMetric, ConfidenceInterval, SystemMetrics
 
 
 class EditStatistics(NamedTuple):
@@ -22,6 +23,27 @@ class EditStatistics(NamedTuple):
 
 
 MetricStatistics = Dict[str, List[EditStatistics]]
+
+
+def summarize_statistics(statistics: MetricStatistics, rate_mode: str) -> SystemMetrics:
+    aggregates = {}
+    for name in ("cer", "wer"):
+        summary = _summarize_measurements(statistics[name], rate_mode)
+        metric: AggregateMetric = {
+            "micro": float(summary["micro"]), "macro": float(summary["macro"]),
+            "hits": int(summary["hits"]), "substitutions": int(summary["substitutions"]),
+            "deletions": int(summary["deletions"]), "insertions": int(summary["insertions"]),
+        }
+        aggregates[name] = metric
+    crr_values = [
+        round(1 - _calculate_error_rate(s, d, i, h, rate_mode), 2)
+        for h, s, d, i in statistics["cer"]
+    ]
+    return {
+        "cer": aggregates["cer"], "wer": aggregates["wer"],
+        "crr": {"micro": round(1 - aggregates["cer"]["micro"], 2),
+                "macro": sum(crr_values) / len(crr_values)},
+    }
 
 
 def build_item_statistics(

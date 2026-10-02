@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nlptutti"
-version = "0.0.0.23"
+version = "0.0.0.24"
 description = "Korean STT CER, WER, and CRR metrics with explicit normalization and reproducible reports"
 readme = "README.md"
 dynamic = ["license"]
@@ -65,4 +65,4 @@ include = ["nlptutti*"]
 exclude = ["test*", "pic*"]
 
 [tool.setuptools.package-data]
-nlptutti = ["*.txt", "*.md", "py.typed"]
+nlptutti = ["*.txt", "*.md", "*.json", "py.typed"]

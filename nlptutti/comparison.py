@@ -19,9 +19,9 @@ from typing import (
 from nlptutti.asr_metrics import (
     _resolve_rate_mode,
     _resolve_unicode_normalization,
-    evaluate_corpus,
+    _calculate_error_rate,
+    _summarize_measurements,
     evaluate_keywords,
-    get_crr,
 )
 from nlptutti.bootstrap import (
     MetricStatistics,
@@ -244,33 +244,14 @@ def _aggregate_metric(value: Mapping[str, object]) -> AggregateMetric:
 
 
 def _system_metrics(
-    references: Sequence[str],
-    hypotheses: Sequence[str],
-    rm_punctuation: bool,
+    statistics: MetricStatistics,
     rate_mode: str,
-    unicode_normalization: Optional[str],
 ) -> SystemMetrics:
-    corpus = evaluate_corpus(
-        references,
-        hypotheses,
-        rm_punctuation=rm_punctuation,
-        rate_mode=rate_mode,
-        unicode_normalization=unicode_normalization,
-    )
-    cer = _aggregate_metric(cast(Mapping[str, object], corpus["cer"]))
-    wer = _aggregate_metric(cast(Mapping[str, object], corpus["wer"]))
+    cer = _aggregate_metric(_summarize_measurements(statistics["cer"], rate_mode))
+    wer = _aggregate_metric(_summarize_measurements(statistics["wer"], rate_mode))
     crr_values = [
-        cast(
-            float,
-            get_crr(
-                reference,
-                hypothesis,
-                rm_punctuation=rm_punctuation,
-                rate_mode=rate_mode,
-                unicode_normalization=unicode_normalization,
-            )["crr"],
-        )
-        for reference, hypothesis in zip(references, hypotheses)
+        round(1 - _calculate_error_rate(s, d, i, h, rate_mode), 2)
+        for h, s, d, i in statistics["cer"]
     ]
     crr: RecognitionMetric = {
         "micro": round(1 - cer["micro"], 2),
@@ -431,15 +412,14 @@ def compare_systems(
     system_results: List[ComparisonSystem] = []
     item_statistics: Dict[str, MetricStatistics] = {}
     for system_id, hypotheses in system_values:
+        statistics = build_item_statistics(
+            reference_values, hypotheses, rm_punctuation,
+            resolved_unicode_normalization,
+        )
+        item_statistics[system_id] = statistics
         result: ComparisonSystem = {
             "id": system_id,
-            "metrics": _system_metrics(
-                reference_values,
-                hypotheses,
-                rm_punctuation,
-                resolved_rate_mode,
-                resolved_unicode_normalization,
-            ),
+            "metrics": _system_metrics(statistics, resolved_rate_mode),
             "provenance": {
                 "hypothesis_sha256": _fingerprint(hypotheses),
                 "item_count": len(hypotheses),
@@ -473,12 +453,6 @@ def compare_systems(
                 entity_result=result.get("entities"),
             )
         system_results.append(result)
-        item_statistics[system_id] = build_item_statistics(
-            reference_values,
-            hypotheses,
-            rm_punctuation,
-            resolved_unicode_normalization,
-        )
 
     warnings: List[str] = []
     report: ComparisonReport = {

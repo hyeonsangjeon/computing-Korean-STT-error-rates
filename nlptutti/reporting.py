@@ -6,18 +6,8 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Mapping, Union, cast
 
-from nlptutti.comparison_types import COMPARISON_SCHEMA, ComparisonReport
-
-
-def _validate_report(report: Mapping[str, object]) -> None:
-    if not isinstance(report, Mapping):
-        raise TypeError("report must be a comparison report mapping")
-    if report.get("schema") != COMPARISON_SCHEMA:
-        raise ValueError(f"report schema must be {COMPARISON_SCHEMA!r}")
-    if not isinstance(report.get("systems"), list):
-        raise ValueError("report systems must be a list")
-    if not isinstance(report.get("pairwise"), list):
-        raise ValueError("report pairwise must be a list")
+from nlptutti.comparison_types import ComparisonReport
+from nlptutti.report_validation import validate_comparison_report as _validate_report
 
 
 def render_comparison_json(report: ComparisonReport) -> str:
@@ -313,12 +303,14 @@ def write_comparison_bundle(
 ) -> Dict[str, Path]:
     """Write deterministic ``report.json`` and ``report.md`` files."""
 
+    json_content = render_comparison_json(report)
+    markdown_content = render_comparison_markdown(report)
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     json_path = destination / "report.json"
     markdown_path = destination / "report.md"
-    _write_atomic(json_path, render_comparison_json(report))
-    _write_atomic(markdown_path, render_comparison_markdown(report))
+    _write_atomic(json_path, json_content)
+    _write_atomic(markdown_path, markdown_content)
     return {"json": json_path, "markdown": markdown_path}
 
 

@@ -2,6 +2,21 @@
 
 모든 중요한 변경 사항은 이 파일에 기록됩니다.
 
+## [0.0.0.24] - 2026-10-02
+
+### 개선
+- 문장 오류율의 기존 문자 기준을 `sentence_error_unit`으로 명시하고 어절 기준 `word_sentence_error_rate`, `word_perfect_sentences`를 추가했습니다. 기존 필드의 값은 그대로입니다.
+- 비교 시 문장별 CER/WER 편집 통계를 한 번 계산해 micro/macro, CRR, bootstrap에서 재사용합니다. CRR의 문장별 반올림과 빈 참조 처리는 유지합니다.
+- JSON과 Markdown이 같은 런타임 보고서 검증을 사용합니다. 필수 필드, 유한 숫자, 옵션과 ID 참조 오류에 필드 경로를 표시합니다. 두 형식을 모두 렌더링한 뒤 번들을 저장합니다.
+- 설치 버전에 포함된 예제를 내보내는 `nlptutti sample`을 추가했습니다. 설치 후 첫 비교에 네트워크나 모델이 필요하지 않습니다.
+
+### 호환성
+- 기본 `rate_mode="normalized"`, `unicode_normalization=None`, `privacy_mode="detailed"`와 comparison schema 1.0을 유지합니다. 런타임 의존성을 추가하지 않았습니다.
+
+### 검증
+- 문자·어절 문장 오류율, 편집거리 호출 횟수, 기존 공개 함수와의 점수 일치, 불완전 보고서와 파일 보존 회귀 테스트를 추가했습니다.
+- Linux Python 3.8~3.14 검사에 Windows/macOS 대표 wheel 검사와 jiwer 3.0.0 하한·3.x/4.x 조합을 추가했습니다. 한글 경로, CRLF, 파일 교체도 설치본으로 검사합니다.
+
 ## [0.0.0.23] - 2026-09-22
 
 ### 수정

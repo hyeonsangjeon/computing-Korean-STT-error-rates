@@ -1,5 +1,6 @@
 import json
 import re
+import pkgutil
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestDocumentationExamples(unittest.TestCase):
+    def test_installed_sample_matches_documentation_fixture(self):
+        installed = json.loads(pkgutil.get_data("nlptutti", "comparison_sample.json").decode("utf-8"))
+        example = json.loads((ROOT / "examples/comparison_input.json").read_text(encoding="utf-8"))
+        self.assertEqual(installed, example)
+
     def test_readme_comparison_fixture_has_documented_results(self):
         document = json.loads(
             (ROOT / "examples" / "comparison_input.json").read_text(encoding="utf-8")

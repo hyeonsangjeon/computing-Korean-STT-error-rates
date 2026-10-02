@@ -84,9 +84,11 @@ for system in report["systems"]:
 
 저장소의 [`examples/comparison_input.json`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/examples/comparison_input.json)은
 바로 위 Python 예제와 같은 입력입니다.
+0.0.0.24부터 설치본에 같은 예제가 들어 있습니다. 설치 후에는 모델이나
+GitHub 파일을 내려받지 않고 다음 두 명령만 실행하면 됩니다.
 
 ```bash
-python -c "from urllib.request import urlretrieve; urlretrieve('https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/examples/comparison_input.json', 'comparison_input.json')"
+nlptutti sample --output comparison_input.json
 nlptutti compare comparison_input.json \
   --rate-mode standard \
   --output-dir comparison-report
@@ -134,6 +136,10 @@ comparison-report/report.md
 됩니다.
 
 ## 어떤 함수를 선택할까
+
+`evaluate_corpus`의 기존 문장 오류율은 공백을 제거한 **문자 기준**입니다.
+0.0.0.24부터 띄어쓰기까지 구분하는 `word_sentence_error_rate`도 반환합니다.
+[문자·어절 기준 예제와 보고서 검증](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/corpus-and-validation.md)을 참고하세요.
 
 | 목적 | API | 성공 기준과 경계 |
 | --- | --- | --- |

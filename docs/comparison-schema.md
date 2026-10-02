@@ -45,6 +45,10 @@ Nlptutti의 다중 STT 비교 결과는 `nlptutti.comparison/1.0` 스키마를 �
 공개 Python 타입은 `nlptutti.comparison_types`에서 제공하며 wheel에는
 PEP 561의 `py.typed` 마커가 포함된다.
 
+0.0.0.24부터 JSON·Markdown·번들 저장은 같은 런타임 validator를 사용한다.
+생성 버전은 1.0이며, 읽을 때는 추가 필드를 포함한 1.x를 허용하고 다른 major는
+거부한다. [필드 오류와 파일 저장 보장 범위](corpus-and-validation.md)를 참고한다.
+
 `evaluation_config.sha256`은 키워드, 개체명, 별칭 설정을 canonical JSON으로
 직렬화한 fingerprint입니다. 세 설정을 모두 생략하면 값은 `null`입니다. 해시는
 설정 원문을 복구하거나 익명화하는 수단이 아니라, 다시 실행할 때 같은 평가

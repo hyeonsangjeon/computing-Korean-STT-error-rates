@@ -68,12 +68,17 @@ def _verify_console_script():
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        input_path = root / "comparison_input.json"
-        output_dir = root / "comparison-report"
+        input_path = root / "비교 입력.json"
+        output_dir = root / "비교 결과"
+        subprocess.run([executable, "sample", "--output", str(input_path)], check=True)
+        assert json.loads(input_path.read_text(encoding="utf-8")) == COMPARISON_INPUT
         input_path.write_text(
-            json.dumps(COMPARISON_INPUT, ensure_ascii=False, indent=2) + "\n",
+            json.dumps(COMPARISON_INPUT, ensure_ascii=False, indent=2).replace("\n", "\r\n") + "\r\n",
             encoding="utf-8",
         )
+        output_dir.mkdir()
+        (output_dir / "report.json").write_text("old", encoding="utf-8")
+        (output_dir / "report.md").write_text("old", encoding="utf-8")
         subprocess.run(
             [
                 executable,
@@ -87,6 +92,7 @@ def _verify_console_script():
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         json_report = json.loads(
             (output_dir / "report.json").read_text(encoding="utf-8")

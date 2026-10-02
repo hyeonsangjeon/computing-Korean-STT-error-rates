@@ -1,0 +1,16 @@
+{
+  "schema": "nlptutti.gate-policy/1.0",
+  "report_schema": "nlptutti.comparison/1.0",
+  "baseline": "baseline",
+  "candidate": "candidate",
+  "rate_mode": "standard",
+  "rm_punctuation": true,
+  "unicode_normalization": null,
+  "score_unit": "ratio",
+  "evaluation_config_sha256": null,
+  "rules": [
+    {"metric": "cer", "aggregation": "micro", "max_regression": 0.02},
+    {"metric": "wer", "aggregation": "micro", "max_regression": 0.02},
+    {"metric": "crr", "aggregation": "micro", "min_score": 0.8}
+  ]
+}

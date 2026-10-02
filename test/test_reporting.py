@@ -20,6 +20,19 @@ def fixed_report():
 
 
 class TestComparisonReporting(unittest.TestCase):
+    def test_concurrent_distinct_bundles_do_not_mix_in_one_process(self):
+        def write(index):
+            report = fixed_report()
+            report["evaluator"]["version"] = "test-version-{}-end".format(index)
+            nt.write_comparison_bundle(report, directory)
+
+        with tempfile.TemporaryDirectory() as directory:
+            with ThreadPoolExecutor(max_workers=16) as executor:
+                list(executor.map(write, range(64)))
+            report = json.loads((Path(directory) / "report.json").read_text(encoding="utf-8"))
+            markdown = (Path(directory) / "report.md").read_text(encoding="utf-8")
+            self.assertIn(report["evaluator"]["version"], markdown)
+
     def test_json_and_markdown_are_deterministic(self):
         report = fixed_report()
 

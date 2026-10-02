@@ -53,3 +53,13 @@ PEP 561의 `py.typed` 마커가 포함된다.
 직렬화한 fingerprint입니다. 세 설정을 모두 생략하면 값은 `null`입니다. 해시는
 설정 원문을 복구하거나 익명화하는 수단이 아니라, 다시 실행할 때 같은 평가
 설정을 사용했는지 확인하는 값입니다.
+
+## 0.0.0.24의 선택적 필드
+
+- `input_sources`: manifest의 파일 해시·형식·provider/schema. 경로와 임의 공급자 메타데이터는 제외한다.
+- `details`: `include_items=True`일 때 문장별 metrics, delta, 상위 악화/개선 ID를 `nlptutti.details/1.0`으로 기록한다.
+- `slices`, `labels_sha256`: 사용자 labels가 있을 때 조건별 집계와 설정 해시를 기록한다. aggregate 모드에는 details와 slices를 허용하지 않는다.
+- `warnings`: bootstrap 해석 안내가 추가될 수 있다. 경고 문장을 안정적인 오류 코드로 파싱하지 않는다.
+
+새 필드도 두 renderer가 함께 검증한다. 기본 비교에는 details, slices와 파일
+출처가 추가되지 않는다. 점수 단위와 기존 필드 의미는 동일하다.

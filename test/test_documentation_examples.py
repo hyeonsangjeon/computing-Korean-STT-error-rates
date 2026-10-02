@@ -1,6 +1,10 @@
 import json
 import re
 import pkgutil
+import html
+import importlib.util
+import contextlib
+import io
 import unittest
 from pathlib import Path
 
@@ -11,6 +15,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestDocumentationExamples(unittest.TestCase):
+    def test_readme_and_corpus_snippets_share_manual_contract(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        comparison = readme.split("### 3. 두 STT 시스템 비교", 1)[1].split("```python", 1)[1].split("```", 1)[0].strip()
+        corpus_doc = (ROOT / "docs/corpus-and-validation.md").read_text(encoding="utf-8")
+        corpus = corpus_doc.split("```python", 1)[1].split("```", 1)[0].strip()
+        contract = json.loads((ROOT / "docs/manual-examples.json").read_text(encoding="utf-8"))
+        for name, snippet in (("comparison", comparison), ("sentence-errors", corpus)):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                exec(compile(snippet, "documentation:" + name, "exec"), {})
+            self.assertEqual(output.getvalue(), contract[name])
+        spec = importlib.util.spec_from_file_location("manual_checker", ROOT / ".github/scripts/verify_manual_examples.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        parser = module.Examples()
+        parser.feed('<pre data-nlptutti-example="comparison"><code>' + html.escape(comparison) + '</code></pre>')
+        self.assertEqual(parser.examples["comparison"], comparison)
+
     def test_installed_sample_matches_documentation_fixture(self):
         installed = json.loads(pkgutil.get_data("nlptutti", "comparison_sample.json").decode("utf-8"))
         example = json.loads((ROOT / "examples/comparison_input.json").read_text(encoding="utf-8"))

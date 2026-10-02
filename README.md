@@ -116,6 +116,13 @@ comparison-report/report.md
 입력 형식, 오류 처리, paired bootstrap과 결과 해석은
 [시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
 
+### 다음 평가로 이어가기 (0.0.0.24부터)
+
+- [저장된 STT 파일 비교](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/file-comparison.md): text·JSON·SRT·TSV와 명시적 Azure/Whisper 응답을 파일 목록으로 연결합니다.
+- [문장·조건별 변화 확인](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/item-comparison.md): 숫자·띄어쓰기·이름 예제로 상위 악화 문장과 사용자 라벨별 점수를 읽습니다.
+- [CI 품질 기준 검사](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/quality-gate.md): 지정한 허용치를 넘으면 별도 `gate` 명령이 종료 코드 3을 반환합니다.
+- [Bootstrap 해석 범위](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/bootstrap-interpretation.md): 소표본·같은 화자·폭이 0인 구간을 해석할 때의 제한입니다.
+
 ## 기본값부터 확인하기
 
 기존 사용자 결과를 바꾸지 않기 위해 정규화 관련 기본값은 그대로 유지합니다.

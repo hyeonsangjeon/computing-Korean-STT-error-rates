@@ -6,7 +6,7 @@ This validates a report contract, not the truth of its source transcripts.
 
 import math
 import re
-from typing import Any, Mapping, Optional, Set
+from typing import Any, Dict, Mapping, Optional, Set
 
 
 def _fail(path: str, message: str) -> None:
@@ -32,6 +32,10 @@ def _number(value: Any, path: str, minimum: Optional[float] = None) -> None:
         _fail(path, "must be a finite number")
     if isinstance(value, float) and not math.isfinite(value):
         _fail(path, "must be a finite number")
+    try:
+        float(value)
+    except OverflowError:
+        _fail(path, "must fit a finite numeric score")
     if minimum is not None and value < minimum:
         _fail(path, "must be at least {}".format(minimum))
 
@@ -90,6 +94,8 @@ def _metrics(value: Any, path: str) -> None:
             _number(
                 metric[average], prefix + "." + average, None if name == "crr" else 0
             )
+            if name == "crr" and metric[average] > 1:
+                _fail(prefix + "." + average, "CRR must not exceed 1")
         if name != "crr":
             for count in ("hits", "substitutions", "deletions", "insertions"):
                 _object(metric, prefix, count)
@@ -313,6 +319,178 @@ def validate_comparison_report(report: object) -> None:
                 _fail(path + ".hypotheses", "must contain one string per item")
         if len(raw_ids) != len(system_ids) or set(raw_ids) != system_ids:
             _fail("report.raw_inputs.systems", "must match system IDs exactly")
+    _extensions(root)
+
+
+def _ordered_systems(values: Any, path: str, system_ids: list) -> list:
+    rows = _list(values, path, len(system_ids))
+    for index, row in enumerate(rows):
+        _object(row, "{}[{}]".format(path, index), "id")
+    if [row["id"] for row in rows] != system_ids:
+        _fail(path, "must match ordered system IDs")
+    return rows
+
+
+def _ordered_pairs(values: Any, path: str, pairs: list) -> list:
+    rows = _list(values, path, len(pairs))
+    for index, row in enumerate(rows):
+        _object(row, "{}[{}]".format(path, index), "baseline candidate")
+    if [(row["baseline"], row["candidate"]) for row in rows] != [
+        (row["baseline"], row["candidate"]) for row in pairs
+    ]:
+        _fail(path, "must match ordered system pairs")
+    return rows
+
+
+def _extensions(root: Mapping[str, Any]) -> None:
+    count = root["dataset"]["item_count"]
+    system_ids = [row["id"] for row in root["systems"]]
+    if root["options"].get("privacy_mode") == "aggregate" and (
+        "details" in root or "slices" in root
+    ):
+        _fail("report", "aggregate mode cannot contain item details or slice labels")
+    if "details" in root:
+        path = "report.details"
+        detail = _object(root["details"], path, "schema top_n systems pairwise")
+        _choice(detail["schema"], path + ".schema", ("nlptutti.details/1.0",))
+        _integer(detail["top_n"], path + ".top_n", 1)
+        ids = None
+        for index, system in enumerate(
+            _ordered_systems(detail["systems"], path + ".systems", system_ids)
+        ):
+            prefix = "{}.systems[{}]".format(path, index)
+            _object(system, prefix, "items")
+            items = _list(system["items"], prefix + ".items", count)
+            current_ids = []
+            for offset, item in enumerate(items):
+                item_path = "{}.items[{}]".format(prefix, offset)
+                _object(item, item_path, "id metrics")
+                _text(item["id"], item_path + ".id")
+                current_ids.append(item["id"])
+                _metrics(item["metrics"], item_path + ".metrics")
+            if (
+                len(current_ids) != count
+                or len(set(current_ids)) != count
+                or (ids is not None and ids != current_ids)
+            ):
+                _fail(
+                    prefix + ".items", "must contain the same unique item IDs in order"
+                )
+            ids = current_ids
+        for index, pair in enumerate(
+            _ordered_pairs(detail["pairwise"], path + ".pairwise", root["pairwise"])
+        ):
+            prefix = "{}.pairwise[{}]".format(path, index)
+            _object(pair, prefix, "items top_regressions top_improvements")
+            rows = _list(pair["items"], prefix + ".items", count)
+            pair_ids = []
+            for offset, row in enumerate(rows):
+                item_path = "{}.items[{}]".format(prefix, offset)
+                _object(row, item_path, "id deltas")
+                pair_ids.append(row["id"])
+                deltas = _object(row["deltas"], item_path + ".deltas", "cer wer crr")
+                for name in ("cer", "wer", "crr"):
+                    _number(deltas[name], item_path + ".deltas." + name)
+            if pair_ids != ids:
+                _fail(prefix + ".items", "must match item IDs in order")
+            for ranking in ("top_regressions", "top_improvements"):
+                values = _object(pair[ranking], prefix + "." + ranking, "cer wer")
+                for name in ("cer", "wer"):
+                    key = prefix + "." + ranking + "." + name
+                    ranked = _list(values[name], key)
+                    if (
+                        not all(isinstance(v, str) and v in pair_ids for v in ranked)
+                        or len(set(ranked)) != len(ranked)
+                        or len(ranked) > detail["top_n"]
+                    ):
+                        _fail(key, "must contain unique existing IDs up to top_n")
+    if "slices" in root:
+        _object(root, "report", "labels_sha256")
+        _hash(root["labels_sha256"], "report.labels_sha256")
+        totals: Dict[str, int] = {}
+        seen = set()
+        for index, slice_ in enumerate(_list(root["slices"], "report.slices", 1)):
+            path = "report.slices[{}]".format(index)
+            _object(slice_, path, "field value item_count systems pairwise")
+            _text(slice_["field"], path + ".field")
+            _text(slice_["value"], path + ".value")
+            _integer(slice_["item_count"], path + ".item_count", 1)
+            identity = (slice_["field"], slice_["value"])
+            if identity in seen:
+                _fail(path, "slice field/value must be unique")
+            seen.add(identity)
+            totals[slice_["field"]] = (
+                totals.get(slice_["field"], 0) + slice_["item_count"]
+            )
+            for offset, system in enumerate(
+                _ordered_systems(slice_["systems"], path + ".systems", system_ids)
+            ):
+                prefix = "{}.systems[{}]".format(path, offset)
+                _object(system, prefix, "metrics")
+                _metrics(system["metrics"], prefix + ".metrics")
+            for offset, pair in enumerate(
+                _ordered_pairs(slice_["pairwise"], path + ".pairwise", root["pairwise"])
+            ):
+                prefix = "{}.pairwise[{}]".format(path, offset)
+                _object(pair, prefix, "metrics")
+                metrics = _object(pair["metrics"], prefix + ".metrics", "cer wer crr")
+                for name in ("cer", "wer", "crr"):
+                    delta = _object(
+                        metrics[name], prefix + ".metrics." + name, "micro macro"
+                    )
+                    for average in ("micro", "macro"):
+                        _number(
+                            delta[average], prefix + ".metrics." + name + "." + average
+                        )
+        if any(total != count for total in totals.values()):
+            _fail("report.slices", "each label field must account for every item once")
+    if "input_sources" in root:
+        path = "report.input_sources"
+        sources = _object(
+            root["input_sources"], path, "schema manifest_sha256 references systems"
+        )
+        _choice(sources["schema"], path + ".schema", ("nlptutti.manifest/1.0",))
+        _hash(sources["manifest_sha256"], path + ".manifest_sha256")
+        collections = [(path + ".references", sources["references"])]
+        for index, system in enumerate(
+            _ordered_systems(sources["systems"], path + ".systems", system_ids)
+        ):
+            prefix = "{}.systems[{}]".format(path, index)
+            _object(system, prefix, "files")
+            collections.append((prefix + ".files", system["files"]))
+        for prefix, collection in collections:
+            files = _list(collection, prefix, count)
+            if len(files) != count:
+                _fail(prefix, "must contain one file per item")
+            for index, file in enumerate(files):
+                key = "{}[{}]".format(prefix, index)
+                _object(file, key, "item_index sha256 source_format")
+                _integer(file["item_index"], key + ".item_index")
+                if file["item_index"] != index:
+                    _fail(key + ".item_index", "must match the aligned item order")
+                _hash(file["sha256"], key + ".sha256")
+                _choice(
+                    file["source_format"],
+                    key + ".source_format",
+                    ("text", "json", "srt", "tsv"),
+                )
+                if "provider" in file:
+                    _object(file, key, "schema_version")
+                    _choice(
+                        (file["provider"], file["schema_version"]),
+                        key + ".provider",
+                        (
+                            ("azure-speech", "short-audio-simple-v1"),
+                            ("openai-whisper", "transcribe-v1"),
+                        ),
+                    )
+                    _choice(file["source_format"], key + ".source_format", ("json",))
+                if "json_text_policy" in file:
+                    _choice(
+                        file["json_text_policy"],
+                        key + ".json_text_policy",
+                        ("text", "segments_fallback"),
+                    )
 
 
 __all__ = ["validate_comparison_report"]

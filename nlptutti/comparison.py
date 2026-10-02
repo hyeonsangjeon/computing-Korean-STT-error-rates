@@ -19,14 +19,13 @@ from typing import (
 from nlptutti.asr_metrics import (
     _resolve_rate_mode,
     _resolve_unicode_normalization,
-    _calculate_error_rate,
-    _summarize_measurements,
     evaluate_keywords,
 )
 from nlptutti.bootstrap import (
     MetricStatistics,
     build_item_statistics,
     paired_bootstrap_intervals,
+    summarize_statistics,
 )
 from nlptutti.comparison_types import (
     COMPARISON_SCHEMA,
@@ -37,10 +36,10 @@ from nlptutti.comparison_types import (
     MetricDelta,
     PairwiseDelta,
     RecognitionMetric,
-    SystemMetrics,
 )
 from nlptutti.diagnostics import KOREAN_DIAGNOSTIC_PROFILE, diagnose_korean_errors
 from nlptutti.entity_metrics import evaluate_entities
+from nlptutti.comparison_details import build_item_details, build_slices, validate_labels
 
 TextCollection = Union[Iterable[str], Mapping[str, str]]
 KeywordInput = Union[str, Sequence[str], Mapping[str, Union[str, Sequence[str]]]]
@@ -232,34 +231,6 @@ def _evaluation_config(
     }
 
 
-def _aggregate_metric(value: Mapping[str, object]) -> AggregateMetric:
-    return {
-        "micro": cast(float, value["micro"]),
-        "macro": cast(float, value["macro"]),
-        "hits": cast(int, value["hits"]),
-        "substitutions": cast(int, value["substitutions"]),
-        "deletions": cast(int, value["deletions"]),
-        "insertions": cast(int, value["insertions"]),
-    }
-
-
-def _system_metrics(
-    statistics: MetricStatistics,
-    rate_mode: str,
-) -> SystemMetrics:
-    cer = _aggregate_metric(_summarize_measurements(statistics["cer"], rate_mode))
-    wer = _aggregate_metric(_summarize_measurements(statistics["wer"], rate_mode))
-    crr_values = [
-        round(1 - _calculate_error_rate(s, d, i, h, rate_mode), 2)
-        for h, s, d, i in statistics["cer"]
-    ]
-    crr: RecognitionMetric = {
-        "micro": round(1 - cer["micro"], 2),
-        "macro": sum(crr_values) / len(crr_values),
-    }
-    return {"cer": cer, "wer": wer, "crr": crr}
-
-
 def _metric_delta(
     baseline: Union[AggregateMetric, RecognitionMetric],
     candidate: Union[AggregateMetric, RecognitionMetric],
@@ -367,6 +338,9 @@ def compare_systems(
     diagnostic_profile: Optional[str] = None,
     include_transcripts: bool = False,
     privacy_mode: str = "detailed",
+    include_items: bool = False,
+    labels: Optional[Mapping[str, Mapping[str, str]]] = None,
+    top_n: int = 10,
 ) -> ComparisonReport:
     """Compare two or more aligned STT outputs without running an STT model.
 
@@ -386,6 +360,12 @@ def compare_systems(
         raise ValueError("privacy_mode must be 'aggregate' or 'detailed'")
     if privacy_mode == "aggregate" and include_transcripts:
         raise ValueError("aggregate privacy_mode cannot include transcripts")
+    if not isinstance(include_items, bool):
+        raise TypeError("include_items must be a boolean")
+    if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1:
+        raise ValueError("top_n must be a positive integer")
+    if privacy_mode == "aggregate" and (include_items or labels is not None):
+        raise ValueError("aggregate mode cannot include item IDs or slice labels; use detailed mode explicitly")
     if diagnostic_profile not in (None, KOREAN_DIAGNOSTIC_PROFILE):
         raise ValueError("diagnostic_profile must be None or 'korean-v1'")
     if isinstance(bootstrap, bool) or not isinstance(bootstrap, int) or bootstrap < 0:
@@ -405,6 +385,7 @@ def compare_systems(
         references, ids
     )
     system_values = _coerce_systems(systems, reference_ids, references_use_ids)
+    validate_labels(labels, reference_ids)
     evaluation_config = _evaluation_config(
         keywords, entities, entity_aliases, resolved_unicode_normalization
     )
@@ -419,7 +400,7 @@ def compare_systems(
         item_statistics[system_id] = statistics
         result: ComparisonSystem = {
             "id": system_id,
-            "metrics": _system_metrics(statistics, resolved_rate_mode),
+            "metrics": summarize_statistics(statistics, resolved_rate_mode),
             "provenance": {
                 "hypothesis_sha256": _fingerprint(hypotheses),
                 "item_count": len(hypotheses),
@@ -455,6 +436,12 @@ def compare_systems(
         system_results.append(result)
 
     warnings: List[str] = []
+    if bootstrap:
+        warnings.append("utterance bootstrap assumes independent sampling units; multiple utterances from one speaker or recording may violate this assumption")
+        if len(reference_values) < 10:
+            warnings.append("bootstrap uses fewer than 10 items; a narrow interval is not evidence of generalization")
+        if bootstrap < 1000:
+            warnings.append("bootstrap uses fewer than 1000 resamples; percentile endpoints may be unstable")
     report: ComparisonReport = {
         "schema": COMPARISON_SCHEMA,
         "evaluator": {"name": "nlptutti", "version": _package_version()},
@@ -485,6 +472,19 @@ def compare_systems(
         ),
         "warnings": warnings,
     }
+    if bootstrap and any(
+        delta["confidence_interval"]["lower"] == delta["confidence_interval"]["upper"]
+        for pair in report["pairwise"] for delta in pair["metrics"].values()
+        if "confidence_interval" in delta
+    ):
+        warnings.append("at least one bootstrap interval has zero width; identical or uninformative samples do not establish certainty")
+    if include_items:
+        report["details"] = build_item_details(reference_ids, item_statistics, resolved_rate_mode, top_n)
+        warnings.append("item details contain source IDs; inspect IDs before sharing")
+    if labels is not None:
+        report["slices"] = build_slices(reference_ids, labels, item_statistics, resolved_rate_mode)
+        report["labels_sha256"] = _fingerprint(labels)
+        warnings.append("slice labels are user-supplied and may contain sensitive text; small slices are descriptive only")
     if privacy_mode == "aggregate":
         _aggregate_only(report)
         warnings.append(

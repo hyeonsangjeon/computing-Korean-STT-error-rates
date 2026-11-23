@@ -21,6 +21,12 @@ nlptutti gate report.json --policy examples/gate_policy.json --output decision.j
 다르면 판정을 거부합니다. 사전 평가를 생략했을 때만 fingerprint는 `null`입니다.
 `aggregate` 보고서에는 바뀐 `system-1` 등의 ID를 씁니다.
 
+미배포 소스는 새 비교 보고서에 `report_schema: "nlptutti.comparison/1.1"`과
+`punctuation_policy: "decimal-aware"`인 정책을 사용합니다 (`--keep-punctuation`이면 `"keep"`).
+기존 1.0 보고서와 기존 정책은 그대로 함께 사용할 수 있습니다. 소수점이 있는 발화는 점수가
+달라질 수 있으므로 **새로 계산한 기준값을 확인한 뒤** 정책과 임계치를 갱신하세요.
+필드 없는 구 정책을 새 정책으로 간주하거나 저장된 점수를 재계산하지 않습니다.
+
 | metric | aggregation | 허용 조건 |
 | --- | --- | --- |
 | `cer`, `wer` | `micro` 또는 `macro` | `max_regression`, `max_score` |
@@ -51,8 +57,8 @@ decision JSON에는 정책, 보고서 SHA-256, 점수·악화량·실패 이유�
 
 ## GitHub Actions 예시
 
-0.0.0.24 배포 후 사용하며 버전은 검증한 값으로 고정하세요. 아래 예제는 같은
-`examples/gate_policy.json` fixture로 테스트합니다.
+아래 예제는 체크아웃한 소스와 그 소스의 `examples/gate_policy.json`을 함께
+사용합니다. 별도 배포판을 설치한다면 그 버전에 맞는 정책을 고정하세요.
 
 ```yaml
 name: STT quality
@@ -67,7 +73,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: python -m pip install nlptutti==0.0.0.24
+      - run: python -m pip install .
       - run: nlptutti sample --output comparison_input.json
       - run: nlptutti compare comparison_input.json --rate-mode standard --output report.json
       - run: nlptutti gate report.json --policy examples/gate_policy.json --output decision.json

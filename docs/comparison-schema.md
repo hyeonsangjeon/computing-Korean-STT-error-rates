@@ -1,13 +1,13 @@
-# Comparison schema 1.0
+# Comparison schema 1.x
 
-Nlptutti의 다중 STT 비교 결과는 `nlptutti.comparison/1.0` 스키마를 사용한다.
+미배포 소스의 다중 STT 비교 결과는 `nlptutti.comparison/1.1`이다. `0.0.0.24`까지의 1.0 결과도 계속 읽을 수 있다.
 이 스키마는 기존 단일 지표 함수의 반환값을 건드리지 않고 새 비교 API에만 적용된다.
 
 ## 최상위 필드
 
 | 필드 | 설명 |
 | --- | --- |
-| `schema` | 항상 `nlptutti.comparison/1.0` |
+| `schema` | 새 비교 결과는 `nlptutti.comparison/1.1` |
 | `evaluator` | 패키지 이름과 실행한 패키지 버전 |
 | `options` | 정규화, 구두점, bootstrap, 진단 설정 |
 | `dataset` | 문장 수와 ID·reference SHA-256 |
@@ -20,13 +20,18 @@ Nlptutti의 다중 STT 비교 결과는 `nlptutti.comparison/1.0` 스키마를 �
 기본 상세 결과의 개체명 오류 구간이나 진단 토큰은 별개이므로 이 옵션을
 모든 텍스트의 비공개 보장으로 해석하면 안 된다.
 
+1.1에서는 `options.punctuation_policy`를 기록한다. 기본 `decimal-aware`는
+양옆이 십진 숫자인 ASCII 점을 남긴다. `rm_punctuation=false`면 `keep`이다.
+1.0 보고서에 이 필드가 없으면 `rm_punctuation`에 따라 `remove-all` 또는 `keep`으로
+해석한다. 스키마를 구분해야 예전 gate도 새 점수를 예전 기준으로 판정하지 않는다.
+
 0.0.0.23부터 `options.privacy_mode`를 기록한다. 이전 결과에서 이 필드가
 없으면 `detailed`로 해석한다. 기본 `detailed`는 기존 상세 결과를 보존한다.
 선택적 `aggregate` 모드에서만 다음 필드가 달라진다.
 
 - 시스템 ID와 pairwise ID는 입력 순서에 따른 `system-1`, `system-2` 등으로 바뀐다.
 - `keywords`에는 `summary`만 남는다.
-- `entities`에는 `summary`, `entity_cer`, `rate_mode`, `rm_punctuation`, `unicode_normalization`, `aliases_enabled`만 남는다.
+- `entities`에는 `summary`, `entity_cer`, `rate_mode`, `rm_punctuation`, `unicode_normalization`, `aliases_enabled`와 (새 결과에서는) `punctuation_policy`만 남는다.
 - 진단 `top_character_edits`는 `redacted: true`와 세 가지 편집의 빈 목록을 가진다. 실제 토큰과 `limit`은 생략한다.
 - `raw_inputs`는 허용하지 않는다. 점수·fingerprint와 그 밖의 집계는 동일하다.
 
@@ -46,7 +51,7 @@ Nlptutti의 다중 STT 비교 결과는 `nlptutti.comparison/1.0` 스키마를 �
 PEP 561의 `py.typed` 마커가 포함된다.
 
 0.0.0.24부터 JSON·Markdown·번들 저장은 같은 런타임 validator를 사용한다.
-생성 버전은 1.0이며, 읽을 때는 추가 필드를 포함한 1.x를 허용하고 다른 major는
+생성 버전은 1.1이며, 읽을 때는 추가 필드를 포함한 1.x를 허용하고 다른 major는
 거부한다. [필드 오류와 파일 저장 보장 범위](corpus-and-validation.md)를 참고한다.
 
 `evaluation_config.sha256`은 키워드, 개체명, 별칭 설정을 canonical JSON으로

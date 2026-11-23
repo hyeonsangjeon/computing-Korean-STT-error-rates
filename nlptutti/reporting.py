@@ -7,6 +7,7 @@ from threading import RLock
 from pathlib import Path
 from typing import Dict, Mapping, Union, cast
 
+from nlptutti.asr_metrics import _punctuation_policy
 from nlptutti.comparison_types import ComparisonReport
 from nlptutti.report_validation import validate_comparison_report as _validate_report
 
@@ -171,22 +172,30 @@ def _diagnostic_section(report: ComparisonReport) -> str:
         "",
         "Number/unit and josa/eomi-adjacent rows are experimental heuristics, not morphological analysis.",
         "",
-        "| System | Spacing missing/extra | Number-unit missing/unexpected | Josa/eomi adjacent | Top substitutions |",
-        "| --- | ---: | ---: | ---: | --- |",
+        "Number-unit coverage counts utterances, not semantic equivalence. "
+        "Unknown means either side has no detection or contains uncovered digits.",
+        "",
+        "| System | Spacing missing/extra | Number-unit missing/unexpected | Both detected / unknown / total | Josa/eomi adjacent | Top substitutions |",
+        "| --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for system in systems:
         diagnostics = cast(Mapping[str, object], system["diagnostics"])
         spacing = cast(Mapping[str, int], diagnostics["spacing_boundary"])
-        number_unit = cast(Mapping[str, int], diagnostics["number_unit"])
+        number_unit = cast(Mapping[str, object], diagnostics["number_unit"])
+        coverage = number_unit.get("coverage")
         suffix = cast(Mapping[str, int], diagnostics["josa_eomi_adjacent"])
         lines.append(
             "| {system} | {spacing_missing}/{spacing_extra} | "
-            "{number_missing}/{number_extra} | {suffix} | {top} |".format(
+            "{number_missing}/{number_extra} | {coverage} | {suffix} | {top} |".format(
                 system=_table_text(system["id"]),
                 spacing_missing=spacing["missing_boundaries"],
                 spacing_extra=spacing["extra_boundaries"],
                 number_missing=number_unit["missing_mentions"],
                 number_extra=number_unit["unexpected_mentions"],
+                coverage=(
+                    "{both_detected_items} / {unknown_items} / {items}".format(**coverage)
+                    if isinstance(coverage, Mapping) else "not recorded"
+                ),
                 suffix=suffix["substitutions"],
                 top=_top_substitutions(diagnostics),
             )
@@ -225,6 +234,7 @@ def render_comparison_markdown(report: ComparisonReport) -> str:
 - Items: {item_count}
 - Rate mode: `{rate_mode}`
 - Remove punctuation: `{rm_punctuation}`
+- Punctuation policy: `{punctuation_policy}`
 - Unicode normalization: `{unicode_normalization}`
 - Paired bootstrap: `{bootstrap_resamples}` resamples, seed `{bootstrap_seed}`, confidence `{confidence}`
 
@@ -260,6 +270,9 @@ CRR deltas mean the candidate has a higher recognition rate.
         item_count=dataset["item_count"],
         rate_mode=options["rate_mode"],
         rm_punctuation=str(options["rm_punctuation"]).lower(),
+        punctuation_policy=options.get(
+            "punctuation_policy", _punctuation_policy(options["rm_punctuation"], legacy=True)
+        ),
         unicode_normalization=(options["unicode_normalization"] or "none"),
         bootstrap_resamples=options["bootstrap_resamples"],
         bootstrap_seed=options["bootstrap_seed"],

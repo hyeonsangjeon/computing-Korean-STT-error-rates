@@ -11,6 +11,7 @@ from typing import Dict, List, Mapping, Optional, Tuple, Union
 
 from nlptutti._json import load_json
 from nlptutti.asr_metrics import (
+    _punctuation_policy,
     _resolve_rate_mode,
     _resolve_unicode_normalization,
     get_cer,
@@ -473,6 +474,7 @@ def evaluate_transcript(
         "options": {
             "rate_mode": resolved_rate_mode,
             "rm_punctuation": rm_punctuation,
+            "punctuation_policy": _punctuation_policy(rm_punctuation),
             "unicode_normalization": resolved_unicode_normalization,
         },
         "metrics": {

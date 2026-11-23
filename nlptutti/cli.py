@@ -5,13 +5,14 @@ import json
 import pkgutil
 import sys
 from pathlib import Path
-from typing import Dict, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Mapping, NoReturn, Optional, Sequence, Tuple
 
 from nlptutti._json import load_json
 from nlptutti.comparison import TextCollection, compare_systems
 from nlptutti.manifest import load_comparison_manifest, load_evaluation_config, read_json_file
 from nlptutti.quality_gate import evaluate_quality_gate
 from nlptutti.reporting import _write_atomic, render_comparison_json, write_comparison_bundle
+from nlptutti.score import build_score_report, load_score_inputs, render_score_text
 
 
 def _item_list_to_mapping(values: object, field_name: str) -> Dict[str, str]:
@@ -67,12 +68,40 @@ def _load_comparison_input(
     return references, systems
 
 
+def _add_metric_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--rate-mode", choices=("normalized", "standard"), default="normalized",
+                        help="분모: normalized(기본, 삽입 포함) 또는 standard(참조 길이)")
+    parser.add_argument("--unicode-normalization", choices=("NFC", "NFD", "NFKC", "NFKD"),
+                        help="선택 시에만 유니코드 정규화")
+    parser.add_argument("--keep-punctuation", action="store_true",
+                        help="모든 문장부호를 유지 (기본: 숫자 사이의 점만 보존하고 나머지 문장부호 제거)")
+    parser.add_argument("--diagnostic-profile", choices=("korean-v1",),
+                        help="선택 진단 추가 (JSON에 오류 문자 조각이 포함될 수 있음)")
+
+
+class _CommandParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        if self.prog == "nlptutti score":
+            message = "참조·가설 파일과 옵션을 확인하세요. 예: nlptutti score ref.txt hyp.txt\n" + message
+        super().error(message)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="nlptutti",
         description="Evaluate and compare Korean STT transcripts offline.",
     )
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(dest="command", parser_class=_CommandParser)
+    score = subparsers.add_parser("score", help="참조와 STT 결과 한 쌍의 CER·WER·CRR 계산",
+                                  description="참조 파일과 가설 파일을 로컬에서 평가합니다. TXT는 한 줄에 한 발화입니다.")
+    score.add_argument("reference", type=Path, metavar="참조파일")
+    score.add_argument("hypothesis", type=Path, metavar="가설파일")
+    score.add_argument("--input-format", choices=("text", "csv", "jsonl"),
+                       help="기본: 두 파일의 확장자. CSV·JSONL은 id와 text 두 필드로 ID 정렬")
+    score.add_argument("--format", choices=("text", "json"), help="출력 형식 (기본: 한국어 요약, .json에 저장할 때는 JSON)")
+    score.add_argument("--output", type=Path, help="표준 출력 대신 UTF-8 파일에 저장")
+    score.add_argument("--include-items", action="store_true", help="발화별 ID와 점수 포함 (원문 제외)")
+    _add_metric_options(score)
     sample = subparsers.add_parser("sample", help="emit the installed version's offline example corpus")
     sample.add_argument("--output", type=Path, help="write UTF-8 JSON instead of standard output")
     gate = subparsers.add_parser("gate", help="check an existing report against explicit quality limits")
@@ -99,20 +128,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="write report.json and report.md to this directory",
     )
-    compare.add_argument(
-        "--rate-mode",
-        choices=("normalized", "standard"),
-        default="normalized",
-    )
-    compare.add_argument(
-        "--unicode-normalization",
-        choices=("NFC", "NFD", "NFKC", "NFKD"),
-    )
-    compare.add_argument(
-        "--keep-punctuation",
-        action="store_true",
-        help="keep punctuation during metric preprocessing",
-    )
+    _add_metric_options(compare)
     compare.add_argument(
         "--privacy-mode",
         choices=("aggregate", "detailed"),
@@ -133,24 +149,45 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     compare.add_argument("--seed", type=int, default=42)
     compare.add_argument("--confidence", type=float, default=0.95)
-    compare.add_argument(
-        "--diagnostic-profile",
-        choices=("korean-v1",),
-        help="add deterministic Korean diagnostic breakdowns",
-    )
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    # argparse can print Korean help or errors before it returns a namespace.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors=stream.errors)
     parser = _build_parser()
-    arguments = parser.parse_args(argv)
+    arguments, extra = parser.parse_known_args(argv)
+    if extra:
+        prefix = "알 수 없는 score 인자: " if arguments.command == "score" else "unrecognized arguments: "
+        parser.error(prefix + " ".join(extra))
     if arguments.command is None:
         parser.print_help()
         return 2
 
     try:
-        if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8")
+        if arguments.command == "score":
+            inputs = load_score_inputs(arguments.reference, arguments.hypothesis, arguments.input_format)
+            output = arguments.output
+            if output is not None and output.exists() and any(
+                output.samefile(path) for path in (arguments.reference, arguments.hypothesis)
+            ):
+                raise ValueError("결과를 입력 파일에 덮어쓸 수 없습니다. 다른 --output 경로를 지정하세요.")
+            result = build_score_report(
+                inputs, rm_punctuation=not arguments.keep_punctuation, rate_mode=arguments.rate_mode,
+                unicode_normalization=arguments.unicode_normalization,
+                diagnostic_profile=arguments.diagnostic_profile, include_items=arguments.include_items,
+            )
+            fmt = arguments.format or ("json" if output is not None and output.suffix.lower() == ".json" else "text")
+            serialized = (json.dumps(result, ensure_ascii=False, allow_nan=False, indent=2, sort_keys=True) + "\n"
+                          if fmt == "json" else render_score_text(result))
+            if output is None:
+                sys.stdout.write(serialized)
+            else:
+                output.parent.mkdir(parents=True, exist_ok=True)
+                _write_atomic(output, serialized)
+            return 0
         if arguments.command == "sample":
             data = pkgutil.get_data("nlptutti", "comparison_sample.json")
             if data is None:
@@ -215,7 +252,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             sys.stdout.write(serialized)
     except (TypeError, ValueError, OSError) as error:
-        parser.error(str(error))
+        parser.error(("단일 평가 오류: " if arguments.command == "score" else "") + str(error))
     return 0
 
 

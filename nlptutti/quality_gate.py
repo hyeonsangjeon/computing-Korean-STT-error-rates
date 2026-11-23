@@ -4,6 +4,7 @@ import copy
 import math
 from typing import Any, Dict, Mapping
 
+from nlptutti.asr_metrics import _punctuation_policy
 from nlptutti.comparison import _fingerprint
 from nlptutti.comparison_types import ComparisonReport
 from nlptutti.report_validation import validate_comparison_report
@@ -64,7 +65,7 @@ def evaluate_quality_gate(
         "evaluation_config_sha256",
         "rules",
     }
-    config = _exact(policy, "policy", required, set())
+    config = _exact(policy, "policy", required, {"punctuation_policy"})
     if config["schema"] != POLICY_SCHEMA:
         raise ValueError("policy.schema must be " + POLICY_SCHEMA)
     if config["report_schema"] != report["schema"]:
@@ -78,6 +79,14 @@ def evaluate_quality_gate(
     for key in ("rate_mode", "rm_punctuation", "unicode_normalization"):
         if config[key] != report["options"][key]:
             raise ValueError("policy." + key + " must match report.options." + key)
+    # Missing metadata describes the old policy, never the current default.
+    historical = _punctuation_policy(config["rm_punctuation"], legacy=True)
+    report_policy = report["options"].get("punctuation_policy", historical)
+    if config.get("punctuation_policy", historical) != report_policy:
+        raise ValueError(
+            "policy.punctuation_policy must match report.options.punctuation_policy "
+            "({!r}); review preprocessing before reusing thresholds".format(report_policy)
+        )
     if config["evaluation_config_sha256"] != report["evaluation_config"]["sha256"]:
         raise ValueError(
             "policy.evaluation_config_sha256 must match report evaluation config"

@@ -27,7 +27,6 @@ from nlptutti.asr_metrics import (
 DIAGNOSTIC_SCHEMA = "nlptutti.diagnostics/1.0"
 KOREAN_DIAGNOSTIC_PROFILE = "korean-v1"
 
-_TOKEN_CHAR = "0-9A-Za-z가-힣"
 _NUMBER_UNITS = (
     "킬로그램",
     "센티미터",
@@ -35,8 +34,6 @@ _NUMBER_UNITS = (
     "킬로미터",
     "퍼센트",
     "시간",
-    "만원",
-    "억원",
     "kg",
     "cm",
     "mm",
@@ -60,16 +57,18 @@ def _alternation(values: Sequence[str]) -> str:
     )
 
 
+_NUMBER = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
+# Match the whole clock (including meridiem), not a bag of hour/minute parts.
+_CLOCK = (
+    r"(?:(?P<period>오전|오후)[ \t]*)?(?P<hour>[0-9]+)[ \t]*시(?!간)"
+    r"(?:[ \t]*(?P<minute>[0-9]+)[ \t]*분|[ \t]*(?P<half>반))?"
+)
 _NUMBER_UNIT_PATTERN = re.compile(
-    r"(?<![{token}])"
-    r"(?P<number>\d+(?:,\d{{3}})*(?:\.\d+)?)\s*"
-    r"(?P<unit>{units})"
-    r"(?:{josa})?"
-    r"(?![{token}])".format(
-        token=_TOKEN_CHAR,
-        units=_alternation(_NUMBER_UNITS),
-        josa=_alternation(COMPLEX_JOSA),
-    ),
+    r"(?<![\w.,:/+\-−₩$])(?:"
+    + _CLOCK
+    + r"|(?P<number>" + _NUMBER + r")[ \t]*(?P<unit>[만억][ \t]*원|"
+    + _alternation(_NUMBER_UNITS)
+    + r"))(?:" + _alternation(COMPLEX_JOSA) + r")?(?!\w)",
     re.IGNORECASE,
 )
 
@@ -87,7 +86,7 @@ _RULES = (
     },
     {
         "name": "number-unit-mention-difference",
-        "version": "1.0",
+        "version": "1.1",
         "status": "experimental",
     },
     {
@@ -152,19 +151,29 @@ def _spacing_differences(
     return result
 
 
-def _number_unit_mentions(text: str) -> Counter:
-    return Counter(
-        (
-            match.group("number").replace(",", ""),
-            match.group("unit").lower(),
-        )
-        for match in _NUMBER_UNIT_PATTERN.finditer(text)
-    )
+def _number_unit_mentions(text: str) -> Tuple[Counter, bool]:
+    mentions: CounterType[Tuple[str, str]] = Counter()
+    covered_digits = 0
+    for match in _NUMBER_UNIT_PATTERN.finditer(text):
+        if match["hour"] is not None:
+            hour, minute, period = match["hour"], match["minute"], match["period"]
+            if len(hour) > 2 or not (1 if period else 0) <= int(hour) <= (12 if period else 23):
+                continue
+            if minute is not None and (len(minute) > 2 or int(minute) >= 60):
+                continue
+            clock = (period or "") + hour + "시"
+            clock += minute + "분" if minute is not None else (match["half"] or "")
+            key = (clock, "시각")
+        else:
+            key = (match["number"].replace(",", ""), "".join(match["unit"].lower().split()))
+        mentions[key] += 1
+        covered_digits += sum(char.isdecimal() for char in match[0])
+    return mentions, covered_digits < sum(char.isdecimal() for char in text)
 
 
 def _number_unit_differences(
     references: Sequence[str], hypotheses: Sequence[str]
-) -> Dict[str, int]:
+) -> Dict[str, object]:
     result = {
         "reference_mentions": 0,
         "hypothesis_mentions": 0,
@@ -173,9 +182,27 @@ def _number_unit_differences(
         "unexpected_mentions": 0,
         "affected_items": 0,
     }
+    coverage = {
+        "items": len(references),
+        "both_detected_items": 0,
+        "reference_only_items": 0,
+        "hypothesis_only_items": 0,
+        "neither_detected_items": 0,
+        "unknown_items": 0,
+    }
     for reference, hypothesis in zip(references, hypotheses):
-        reference_mentions = _number_unit_mentions(reference)
-        hypothesis_mentions = _number_unit_mentions(hypothesis)
+        reference_mentions, ref_unparsed = _number_unit_mentions(reference)
+        hypothesis_mentions, hyp_unparsed = _number_unit_mentions(hypothesis)
+        if reference_mentions and hypothesis_mentions:
+            coverage["both_detected_items"] += 1
+        elif reference_mentions:
+            coverage["reference_only_items"] += 1
+        elif hypothesis_mentions:
+            coverage["hypothesis_only_items"] += 1
+        else:
+            coverage["neither_detected_items"] += 1
+        if not reference_mentions or not hypothesis_mentions or ref_unparsed or hyp_unparsed:
+            coverage["unknown_items"] += 1
         matched = reference_mentions & hypothesis_mentions
         missing = reference_mentions - hypothesis_mentions
         unexpected = hypothesis_mentions - reference_mentions
@@ -186,7 +213,7 @@ def _number_unit_differences(
         result["unexpected_mentions"] += sum(unexpected.values())
         if missing or unexpected:
             result["affected_items"] += 1
-    return result
+    return {**result, "coverage": coverage}
 
 
 def _split_suffix(token: str) -> Optional[Tuple[str, str, str]]:

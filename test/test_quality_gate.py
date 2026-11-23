@@ -113,6 +113,31 @@ class TestQualityGate(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicates"):
             nt.evaluate_quality_gate(self.report(), policy)
 
+    def test_decimal_policy_must_match_even_for_legacy_files(self):
+        new, policy = self.report(), self.policy()
+        old = copy.deepcopy(new)
+        old["schema"] = "nlptutti.comparison/1.0"
+        del old["options"]["punctuation_policy"]
+        old_policy = dict(policy)
+        old_policy["report_schema"] = old["schema"]
+        del old_policy["punctuation_policy"]
+        self.assertTrue(nt.evaluate_quality_gate(old, old_policy)["passed"])
+        for report, wrong in ((old, policy), (new, old_policy)):
+            with self.assertRaisesRegex(ValueError, "report_schema"):
+                nt.evaluate_quality_gate(report, wrong)
+        with self.assertRaisesRegex(ValueError, "punctuation_policy"):
+            nt.evaluate_quality_gate(new, dict(old_policy, report_schema=new["schema"]))
+        for invalid in ("auto", 1, "keep"):
+            new["options"]["punctuation_policy"] = invalid
+            with self.assertRaisesRegex(ValueError, "report.options.punctuation_policy"):
+                nt.render_comparison_json(new)
+        kept = nt.compare_systems(["가"], {"baseline": ["가"], "candidate": ["가"]},
+                                  rate_mode="standard", rm_punctuation=False)
+        old_policy["rm_punctuation"] = False
+        old_policy["report_schema"] = kept["schema"]
+        self.assertEqual(kept["options"]["punctuation_policy"], "keep")
+        self.assertTrue(nt.evaluate_quality_gate(kept, old_policy)["passed"])
+
     def test_standard_insertions_are_not_clipped(self):
         report = nt.compare_systems(
             ["가"],

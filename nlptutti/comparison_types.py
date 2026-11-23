@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional, TypedDict, Union
 
-COMPARISON_SCHEMA = "nlptutti.comparison/1.0"
+COMPARISON_SCHEMA = "nlptutti.comparison/1.1"
 
 JSONScalar = Union[str, int, float, bool, None]
 
@@ -24,6 +24,7 @@ class ComparisonOptionsRequired(TypedDict):
 
 class ComparisonOptions(ComparisonOptionsRequired, total=False):
     privacy_mode: str
+    punctuation_policy: str
 
 
 class DatasetInfo(TypedDict):

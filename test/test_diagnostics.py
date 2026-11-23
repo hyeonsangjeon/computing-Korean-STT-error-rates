@@ -99,6 +99,34 @@ class TestKoreanDiagnosticProfile(unittest.TestCase):
                 diagnostic_profile="korean-v2",
             )
 
+    def test_surface_amounts_times_and_unknown_coverage(self):
+        refs = ["3.5만 원을", "3,500원", "오전 9시 30분", "2시간", "삼만 원",
+                "오후 25시", "12,34원", "v1.2.3kg", "3만원과 101호", "서울은", "1개"]
+        hyps = ["35만 원을", "3500원", "오후 9시30분", "2 시간", "3만 원",
+                "오후 25시", "12,34원", "v1.2.3kg", "3만 원과 101호", "서울이", ""]
+        report = nt.compare_systems(refs, {"a": hyps, "b": refs}, diagnostic_profile="korean-v1")
+        units = report["systems"][0]["diagnostics"]["number_unit"]
+        self.assertEqual(units["matched_mentions"], 3)
+        self.assertEqual(units["missing_mentions"], 3)
+        self.assertEqual(units["unexpected_mentions"], 3)
+        self.assertEqual(units["coverage"], {
+            "items": 11, "both_detected_items": 5, "neither_detected_items": 4,
+            "hypothesis_only_items": 1, "reference_only_items": 1, "unknown_items": 7
+        })
+        self.assertIn("5 / 7 / 11", nt.render_comparison_markdown(report))
+
+    def test_diagnostic_does_not_convert_units_or_infer_names(self):
+        report = nt.compare_systems(
+            ["3.5만 원", "오후 두 시 반", "이서준"],
+            {"a": ["35,000원", "14:30", "이서진"], "b": ["3.5만원", "오후 두 시 반", "이서준"]},
+            diagnostic_profile="korean-v1",
+        )
+        first, second = report["systems"]
+        units = first["diagnostics"]["number_unit"]
+        self.assertEqual((units["matched_mentions"], units["coverage"]["unknown_items"]), (0, 2))
+        self.assertEqual(second["diagnostics"]["number_unit"]["matched_mentions"], 1)
+        self.assertNotIn("entities", first)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,6 @@ recursive-include .github/ISSUE_TEMPLATE *.yml
 recursive-include .github/workflows *.yml
 recursive-include .github/scripts *.py
 recursive-include benchmarks *.py
-recursive-include docs *.json *.md
-recursive-include examples *.json
+recursive-include docs *.json *.md *.html
+recursive-include examples *.json *.txt
 recursive-include test/fixtures *.json *.md *.srt *.tsv *.txt

@@ -19,6 +19,7 @@ from typing import (
 import jiwer
 
 from nlptutti.alignment import align_sequences
+from nlptutti.comparison_types import RecognitionMetric
 
 
 def levenshtein(u, v):
@@ -197,16 +198,28 @@ def _calculate_normalized_error_rate(
     )
 
 
+def _punctuation_policy(rm_punctuation: bool, *, legacy: bool = False) -> str:
+    if not rm_punctuation:
+        return "keep"
+    return "remove-all" if legacy else "decimal-aware"
+
+
+def _is_removed_punctuation(text: str, index: int) -> bool:
+    char = text[index]
+    if char == "." and 0 < index < len(text) - 1:
+        if text[index - 1].isdecimal() and text[index + 1].isdecimal():
+            return False
+    return unicodedata.category(char).startswith("P")
+
+
 def _preprocess_cer_text(
     text: str,
     rm_punctuation: bool,
     unicode_normalization: Optional[str] = None,
 ) -> str:
-    text = _normalize_unicode(text, unicode_normalization)
-    text = jiwer.RemoveWhiteSpace(replace_by_space=False)(text)
-    if rm_punctuation:
-        text = jiwer.RemovePunctuation()(text)
-    return text
+    # Decide adjacency before deleting whitespace: "1 . 5" is not "1.5".
+    text = _preprocess_wer_text(text, rm_punctuation, unicode_normalization)
+    return jiwer.RemoveWhiteSpace(replace_by_space=False)(text)
 
 
 def _preprocess_wer_text(
@@ -216,7 +229,9 @@ def _preprocess_wer_text(
 ) -> str:
     text = _normalize_unicode(text, unicode_normalization)
     if rm_punctuation:
-        text = jiwer.RemovePunctuation()(text)
+        return "".join(
+            char for i, char in enumerate(text) if not _is_removed_punctuation(text, i)
+        )
     return text
 
 
@@ -230,9 +245,10 @@ def get_cer(
 ) -> MetricResult:
     """Calculate character error rate for one reference/hypothesis pair.
 
-    Whitespace is always removed before character alignment. Punctuation is
-    removed when ``rm_punctuation=True``. The result contains ``cer`` and the
-    substitution, deletion, and insertion counts.
+    Whitespace is removed before character alignment. By default Unicode
+    punctuation is removed except for an ASCII period immediately between two
+    decimal digits in the (optionally Unicode-normalized) input. Version
+    0.0.0.24 removed these periods too. The result contains CER and edit counts.
 
     ``rate_mode="normalized"`` is the historical Nlptutti behavior and remains
     the default for backward compatibility. Use ``rate_mode="standard"`` to
@@ -271,9 +287,9 @@ def get_wer(
 ) -> MetricResult:
     """Calculate word error rate for one reference/hypothesis pair.
 
-    Whitespace defines word boundaries. Punctuation is removed when
-    ``rm_punctuation=True``. The result contains ``wer`` and the substitution,
-    deletion, and insertion counts.
+    Whitespace defines word boundaries. ``rm_punctuation`` uses the same
+    decimal-aware punctuation rule as ``get_cer``. The result contains ``wer``
+    and the substitution, deletion, and insertion counts.
 
     ``rate_mode="normalized"`` is the historical Nlptutti behavior and remains
     the default for backward compatibility. Use ``rate_mode="standard"`` to
@@ -390,6 +406,17 @@ def _summarize_measurements(
     }
 
 
+def _summarize_crr(
+    measurements: Sequence[Tuple[int, int, int, int]], cer_micro: float, rate_mode: str
+) -> RecognitionMetric:
+    # As in get_crr, round each utterance's CRR before taking its mean.
+    rates = [
+        round(1 - _calculate_error_rate(s, d, i, h, rate_mode), 2)
+        for h, s, d, i in measurements
+    ]
+    return {"micro": round(1 - cer_micro, 2), "macro": sum(rates) / len(rates)}
+
+
 def evaluate_corpus(
     reference_sentences: Iterable[str],
     hypothesis_sentences: Iterable[str],
@@ -397,15 +424,20 @@ def evaluate_corpus(
     *,
     rate_mode: str = "normalized",
     unicode_normalization: Optional[str] = None,
+    include_items: bool = False,
 ) -> Dict[str, object]:
-    """Evaluate CER and WER over aligned sentence collections.
+    """Evaluate CER, WER and CRR over aligned sentence collections.
 
     ``micro`` aggregates edit counts before calculating the rate. ``macro`` is
     the unweighted average of sentence-level rates. The normalized historical
     Nlptutti rate remains the default. Historical ``perfect_sentences`` and
     ``sentence_error_rate`` use CER preprocessing (including whitespace removal).
     ``word_perfect_sentences`` and ``word_sentence_error_rate`` use WER tokens.
+    ``include_items`` also returns one row of scores per input pair, in order,
+    without transcript text or a second alignment pass.
     """
+    if not isinstance(include_items, bool):
+        raise TypeError("include_items must be a boolean")
     references, hypotheses = _coerce_sentence_pairs(
         reference_sentences, hypothesis_sentences
     )
@@ -437,18 +469,32 @@ def evaluate_corpus(
 
     utterances = len(references)
     word_errors = sum(sum(measurement[1:]) > 0 for measurement in wer_measurements)
-    return {
+    cer = _summarize_measurements(cer_measurements, rate_mode)
+    result: Dict[str, object] = {
         "utterances": utterances,
         "rate_mode": rate_mode,
+        "rm_punctuation": rm_punctuation,
+        "punctuation_policy": _punctuation_policy(rm_punctuation),
         "unicode_normalization": unicode_normalization,
-        "cer": _summarize_measurements(cer_measurements, rate_mode),
+        "cer": cer,
         "wer": _summarize_measurements(wer_measurements, rate_mode),
+        "crr": _summarize_crr(cer_measurements, cer["micro"], rate_mode),
         "perfect_sentences": utterances - sentence_errors,
         "sentence_error_rate": sentence_errors / utterances,
         "sentence_error_unit": "character",
         "word_perfect_sentences": utterances - word_errors,
         "word_sentence_error_rate": word_errors / utterances,
     }
+    if include_items:
+        items = []
+        for char_counts, word_counts in zip(cer_measurements, wer_measurements):
+            h, s, d, i = char_counts
+            char_rate = _calculate_error_rate(s, d, i, h, rate_mode)
+            h, s, d, i = word_counts
+            items.append({"cer": char_rate, "wer": _calculate_error_rate(s, d, i, h, rate_mode),
+                          "crr": round(1 - char_rate, 2)})
+        result["items"] = items
+    return result
 
 
 def _align_sequences(
@@ -552,6 +598,9 @@ def explain_errors(
         "metric": metric,
         "unit": resolved_unit,
         "rate_mode": rate_mode,
+        "rm_punctuation": rm_punctuation,
+        "punctuation_policy": _punctuation_policy(rm_punctuation),
+        "unicode_normalization": unicode_normalization,
         "rate": rate,
         "processed_reference": processed_reference,
         "processed_hypothesis": processed_hypothesis,

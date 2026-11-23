@@ -17,6 +17,7 @@ from typing import (
 )
 
 from nlptutti.asr_metrics import (
+    _punctuation_policy,
     _resolve_rate_mode,
     _resolve_unicode_normalization,
     evaluate_keywords,
@@ -298,7 +299,7 @@ def _aggregate_only(report: ComparisonReport) -> None:
                 key: system["entities"][key]
                 for key in (
                     "summary", "entity_cer", "rate_mode",
-                    "rm_punctuation", "unicode_normalization", "aliases_enabled",
+                    "rm_punctuation", "punctuation_policy", "unicode_normalization", "aliases_enabled",
                 )
             }
         if "diagnostics" in system:
@@ -449,6 +450,7 @@ def compare_systems(
         "options": {
             "rate_mode": resolved_rate_mode,
             "rm_punctuation": rm_punctuation,
+            "punctuation_policy": _punctuation_policy(rm_punctuation),
             "unicode_normalization": resolved_unicode_normalization,
             "bootstrap_resamples": bootstrap,
             "bootstrap_seed": seed,

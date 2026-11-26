@@ -23,7 +23,7 @@ CER는 띄어쓰기를 세지 않지만 바뀐 조사는 글자 하나의 치환
 `score`는 0.0.0.25부터 쓸 수 있습니다. 기준 문장과 인식 결과를 각각 UTF-8 파일로 저장하고 **같은 발화를 같은 줄**에 두세요. 인식 결과가 없는 줄도 지우지 않습니다.
 
 ```bash
-python -m pip install nlptutti==0.0.0.25
+python -m pip install nlptutti==0.0.0.26
 nlptutti score ref.txt hyp.txt
 ```
 
@@ -36,7 +36,7 @@ nlptutti score examples/score-ref.txt examples/score-hyp.txt
 
 위 세 발화의 전체(`micro`) 결과는 **CER 0.111111, WER 0.571429, CRR 0.890000**입니다. CLI의 단위는 비율(`1 = 100%`)입니다. `micro`는 편집 횟수를 합친 결과이고, `macro`는 발화별 점수의 단순 평균입니다.
 
-JSON 저장, ID로 정렬하는 CSV·JSONL, 입력 오류는 [단일 평가 사용법](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.25/docs/score.md)을 참고하세요.
+JSON 저장, ID로 정렬하는 CSV·JSONL, 입력 오류는 [단일 평가 사용법](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.26/docs/score.md)을 참고하세요.
 
 ### Python에서 평가하기
 

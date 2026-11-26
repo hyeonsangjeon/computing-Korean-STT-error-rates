@@ -2,7 +2,7 @@
 
 기준 문장과 음성 인식 결과를 넣으면 **문자 오류율(CER), 어절 오류율(WER), 문자 인식률(CRR)**을 계산합니다. 음성 파일이나 STT 모델은 필요하지 않습니다.
 
-**한 문장 바로 평가:** 이 소스 트리의 [로컬 계산기](docs/index.html)를 내려받아 브라우저에서 여세요. **띄어쓰기** 예제를 누르면 `부산 바다 → 부산바다`가 왜 CER 0%인지 바로 나옵니다. 내 문장을 넣고 **오류율 계산**을 눌러도 됩니다. 원문과 채점한 글자, 어절 기준(WER)은 필요할 때 펼쳐 보세요.
+**설치 없이 한 문장 평가:** [계산기 HTML 파일](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.25/docs/index.html)에서 **Download raw file**을 눌러 저장한 뒤 브라우저로 여세요. **띄어쓰기** 예제를 누르면 `부산 바다 → 부산바다`가 왜 CER 0%인지 바로 나옵니다. 내 문장을 넣고 **오류율 계산**을 눌러도 됩니다. 원문과 채점한 글자, 어절 기준(WER)은 필요할 때 펼쳐 보세요.
 
 | 기준 → 음성 인식 결과 | CER | WER | CRR |
 | --- | ---: | ---: | ---: |
@@ -14,7 +14,14 @@ CER는 띄어쓰기를 세지 않지만 바뀐 조사는 글자 하나의 치환
 
 ## 빠른 시작: 파일 두 개 평가하기
 
-**아래 `score`와 소수점 수정은 미배포 소스의 기능입니다.** 이 저장소를 받은 폴더에서 실행하세요. 공개판 `0.0.0.24`를 설치하는 것만으로는 이 명령이 생기지 않습니다.
+`score`는 0.0.0.25부터 쓸 수 있습니다. 기준 문장과 인식 결과를 각각 UTF-8 파일로 저장하고 **같은 발화를 같은 줄**에 두세요. 인식 결과가 없는 줄도 지우지 않습니다.
+
+```bash
+python -m pip install nlptutti==0.0.0.25
+nlptutti score ref.txt hyp.txt
+```
+
+저장소에 들어 있는 예제로 확인하려면 저장소 폴더에서 실행하세요.
 
 ```bash
 python -m pip install .
@@ -23,7 +30,7 @@ nlptutti score examples/score-ref.txt examples/score-hyp.txt
 
 위 세 발화의 전체(`micro`) 결과는 **CER 0.111111, WER 0.571429, CRR 0.890000**입니다. CLI의 단위는 비율(`1 = 100%`)입니다. `micro`는 편집 횟수를 합친 결과이고, `macro`는 발화별 점수의 단순 평균입니다.
 
-내 파일은 `nlptutti score ref.txt hyp.txt`로 평가합니다. 같은 줄끼리 비교하므로 전사가 없는 줄도 지우지 마세요. JSON 저장, ID로 정렬하는 CSV·JSONL, 입력 오류는 [단일 평가 사용법](docs/score.md)을 참고하세요.
+JSON 저장, ID로 정렬하는 CSV·JSONL, 입력 오류는 [단일 평가 사용법](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.25/docs/score.md)을 참고하세요.
 
 ### Python에서 평가하기
 

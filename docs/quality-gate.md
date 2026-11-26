@@ -21,7 +21,7 @@ nlptutti gate report.json --policy examples/gate_policy.json --output decision.j
 다르면 판정을 거부합니다. 사전 평가를 생략했을 때만 fingerprint는 `null`입니다.
 `aggregate` 보고서에는 바뀐 `system-1` 등의 ID를 씁니다.
 
-미배포 소스는 새 비교 보고서에 `report_schema: "nlptutti.comparison/1.1"`과
+0.0.0.25에서는 새 비교 보고서에 `report_schema: "nlptutti.comparison/1.1"`과
 `punctuation_policy: "decimal-aware"`인 정책을 사용합니다 (`--keep-punctuation`이면 `"keep"`).
 기존 1.0 보고서와 기존 정책은 그대로 함께 사용할 수 있습니다. 소수점이 있는 발화는 점수가
 달라질 수 있으므로 **새로 계산한 기준값을 확인한 뒤** 정책과 임계치를 갱신하세요.

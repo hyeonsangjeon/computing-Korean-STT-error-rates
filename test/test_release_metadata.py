@@ -25,22 +25,19 @@ class TestReleaseMetadata(unittest.TestCase):
             self.assertIn("date-released: {}\n".format(heading.group(2)), citation)
         self.assertIn("Development Status :: 4 - Beta", pyproject)
 
-    def test_readme_keeps_official_formula_hero(self):
+    def test_readme_explains_both_rate_modes_with_display_math(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-
-        self.assertIn(
-            "https://raw.githubusercontent.com/hyeonsangjeon/"
-            "computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png",
-            readme,
-        )
-        self.assertIn('alt="표준 CER·WER와 Nlptutti normalized 오류율 공식"', readme)
-        self.assertIn(
-            "<strong>S</strong> 치환 · <strong>D</strong> 삭제 · "
-            "<strong>I</strong> 삽입 · <strong>N</strong> 참조 단위 수 · "
-            "<strong>C</strong> 정답 일치 수",
-            readme,
-        )
-        self.assertTrue((ROOT / "pic" / "FORMULA_CASE.png").is_file())
+        section = readme.split("\n## 계산식\n", 1)[1].split("\n## ", 1)[0]
+        equations = [
+            "".join(block.split()) for block in re.findall(r"^```math\n(.*?)\n```$", section, re.M | re.S)
+        ]
+        for label, fraction in (
+            ("normalized", "{S+D+I}{N+I}"),
+            ("CER", "{S_c+D_c+I_c}{N_c}"),
+            ("WER", "{S_w+D_w+I_w}{N_w}"),
+        ):
+            with self.subTest(label=label):
+                self.assertTrue(any(label in eq and fraction in eq for eq in equations))
 
     def test_zero_one_release_is_explicitly_deferred(self):
         policy = (ROOT / "docs" / "release-policy.md").read_text(encoding="utf-8")

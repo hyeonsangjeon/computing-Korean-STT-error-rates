@@ -77,7 +77,7 @@ get_crr(reference, hypothesis)
 
 ## 릴리스 체크리스트
 
-- [ ] `pyproject.toml`, `CITATION.cff`, `CHANGELOG.md`의 버전과 날짜가 일치합니다.
+- [ ] `pyproject.toml`, `CITATION.cff`, `CHANGELOG.md`의 버전이 일치합니다. 준비 브랜치에서는 `Unreleased`로 두고, 배포 전 `main` 병합을 준비할 때 변경 기록의 날짜와 `CITATION.cff`의 `date-released`를 함께 적습니다.
 - [ ] 공개 API signature와 기존 golden fixture가 통과합니다.
 - [ ] Python 3.8~3.14 GitHub Actions가 모두 통과합니다.
 - [ ] wheel과 sdist를 빌드하고 `twine check`를 통과합니다.

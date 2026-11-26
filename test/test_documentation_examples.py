@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class TestDocumentationExamples(unittest.TestCase):
     def test_readme_and_corpus_snippets_share_manual_contract(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        comparison = readme.split("### 3. 두 STT 시스템 비교", 1)[1].split("```python", 1)[1].split("```", 1)[0].strip()
+        comparison = readme.split("## 선택: 두 STT 시스템 비교", 1)[1].split("```python", 1)[1].split("```", 1)[0].strip()
         corpus_doc = (ROOT / "docs/corpus-and-validation.md").read_text(encoding="utf-8")
         corpus = corpus_doc.split("```python", 1)[1].split("```", 1)[0].strip()
         contract = json.loads((ROOT / "docs/manual-examples.json").read_text(encoding="utf-8"))
@@ -60,7 +60,8 @@ class TestDocumentationExamples(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
         required_fragments = [
-            "python -m pip install -U nlptutti",
+            "python -m pip install .",
+            "nlptutti score examples/score-ref.txt examples/score-hyp.txt",
             "metrics.get_cer(",
             "metrics.compare_systems(",
             "examples/comparison_input.json",
@@ -71,6 +72,14 @@ class TestDocumentationExamples(unittest.TestCase):
         for fragment in required_fragments:
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, readme)
+
+        references, hypotheses = [
+            (ROOT / "examples" / name).read_text(encoding="utf-8").splitlines()
+            for name in ("score-ref.txt", "score-hyp.txt")
+        ]
+        result = nt.evaluate_corpus(references, hypotheses)
+        for metric in ("cer", "wer", "crr"):
+            self.assertIn("{} {:.6f}".format(metric.upper(), result[metric]["micro"]), readme)
 
     def test_repository_readme_links_target_existing_files(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

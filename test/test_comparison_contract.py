@@ -7,7 +7,7 @@ from nlptutti.comparison_types import ComparisonReport
 
 class TestComparisonTypeContract(unittest.TestCase):
     def test_schema_identifier_and_public_type_are_importable(self):
-        self.assertEqual(nt.COMPARISON_SCHEMA, "nlptutti.comparison/1.0")
+        self.assertEqual(nt.COMPARISON_SCHEMA, "nlptutti.comparison/1.1")
         self.assertIs(nt.ComparisonReport, ComparisonReport)
 
     def test_existing_public_signatures_keep_historical_defaults(self):

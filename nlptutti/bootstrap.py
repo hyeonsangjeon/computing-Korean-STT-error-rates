@@ -10,6 +10,7 @@ from nlptutti.asr_metrics import (
     _measure_wer,
     _preprocess_cer_text,
     _preprocess_wer_text,
+    _summarize_crr,
     _summarize_measurements,
 )
 from nlptutti.comparison_types import AggregateMetric, ConfidenceInterval, SystemMetrics
@@ -35,14 +36,9 @@ def summarize_statistics(statistics: MetricStatistics, rate_mode: str) -> System
             "deletions": int(summary["deletions"]), "insertions": int(summary["insertions"]),
         }
         aggregates[name] = metric
-    crr_values = [
-        round(1 - _calculate_error_rate(s, d, i, h, rate_mode), 2)
-        for h, s, d, i in statistics["cer"]
-    ]
     return {
         "cer": aggregates["cer"], "wer": aggregates["wer"],
-        "crr": {"micro": round(1 - aggregates["cer"]["micro"], 2),
-                "macro": sum(crr_values) / len(crr_values)},
+        "crr": _summarize_crr(statistics["cer"], aggregates["cer"]["micro"], rate_mode),
     }
 
 

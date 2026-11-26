@@ -8,6 +8,8 @@ import math
 import re
 from typing import Any, Dict, Mapping, Optional, Set
 
+from nlptutti.asr_metrics import _punctuation_policy
+
 
 def _fail(path: str, message: str) -> None:
     raise ValueError("{}: {}".format(path, message))
@@ -130,6 +132,17 @@ def _optional_results(system: Mapping[str, Any], path: str) -> None:
             values = _object(diagnostic[section], prefix + "." + section, keys)
             for key in keys.split():
                 _integer(values[key], prefix + "." + section + "." + key)
+        if "coverage" in diagnostic["number_unit"]:
+            coverage_path = prefix + ".number_unit.coverage"
+            groups = "both_detected_items reference_only_items hypothesis_only_items neither_detected_items"
+            keys = "items unknown_items " + groups
+            coverage = _object(diagnostic["number_unit"]["coverage"], coverage_path, keys)
+            for key in keys.split():
+                _integer(coverage[key], coverage_path + "." + key)
+            if (sum(coverage[key] for key in groups.split()) != coverage["items"]
+                    or coverage["items"] != system["provenance"]["item_count"]
+                    or not coverage["items"] - coverage["both_detected_items"] <= coverage["unknown_items"] <= coverage["items"]):
+                _fail(coverage_path, "inconsistent item counts")
         edits = _object(
             diagnostic["top_character_edits"],
             prefix + ".top_character_edits",
@@ -177,6 +190,11 @@ def validate_comparison_report(report: object) -> None:
     )
     if not isinstance(options["rm_punctuation"], bool):
         _fail("report.options.rm_punctuation", "must be a boolean")
+    legacy = root["schema"] == "nlptutti.comparison/1.0"
+    if not legacy or "punctuation_policy" in options:
+        _object(options, "report.options", "punctuation_policy")
+        _choice(options["punctuation_policy"], "report.options.punctuation_policy",
+                (_punctuation_policy(options["rm_punctuation"], legacy=legacy),))
     _choice(
         options["unicode_normalization"],
         "report.options.unicode_normalization",

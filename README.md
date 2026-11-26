@@ -1,39 +1,38 @@
-[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/LICENSE)
-[![Downloads](https://static.pepy.tech/badge/nlptutti)](https://pepy.tech/project/nlptutti)
-[![PyPI version](https://badge.fury.io/py/nlptutti.svg)](https://pypi.org/project/nlptutti/)
-[![Tests](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml/badge.svg)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
-[![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
+# Nlptutti: 한국어 STT 오류율
 
-# Nlptutti: 한국어 STT 평가 패키지
+기준 문장과 음성 인식 결과를 넣으면 **문자 오류율(CER), 어절 오류율(WER), 문자 인식률(CRR)**을 계산합니다. 음성 파일이나 STT 모델은 필요하지 않습니다.
 
-`nlptutti`는 한국어 STT(Speech-to-Text) 출력의 CER, WER, CRR, 키워드와
-개체명 보존 성능을 계산하고 여러 시스템의 결과를 재현 가능한 JSON과
-Markdown으로 비교하는 Python 패키지입니다.
+**설치 없이 한 문장 평가:** [계산기 HTML 파일](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.25/docs/index.html)에서 **Download raw file**을 눌러 저장한 뒤 브라우저로 여세요. **띄어쓰기** 예제를 누르면 `부산 바다 → 부산바다`가 왜 CER 0%인지 바로 나옵니다. 내 문장을 넣고 **오류율 계산**을 눌러도 됩니다. 원문과 채점한 글자, 어절 기준(WER)은 필요할 때 펼쳐 보세요.
 
-Microsoft Azure Speech, Amazon Transcribe, Google Cloud Speech-to-Text 같은
-클라우드 STT와 OpenAI Whisper, FunASR 같은 오픈소스 도구가 만든 **출력**을
-평가합니다. 음성을 전사하거나 모델을 내려받는 패키지는 아닙니다.
+| 기준 → 음성 인식 결과 | CER | WER | CRR |
+| --- | ---: | ---: | ---: |
+| 오늘 날씨**가** 맑습니다 → 오늘 날씨**는** 맑습니다 | 11.11% | 33.33% | 89% |
+| 부산 바다 → 부산바다 | 0% | 100% | 100% |
+| 3.5만 원 → 35만 원 | 20% | 50% | 80% |
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" alt="표준 CER·WER와 Nlptutti normalized 오류율 공식" width="640">
-</p>
-<p align="center">
-  <sub><strong>S</strong> 치환 · <strong>D</strong> 삭제 · <strong>I</strong> 삽입 · <strong>N</strong> 참조 단위 수 · <strong>C</strong> 정답 일치 수</sub>
-</p>
+CER는 띄어쓰기를 세지 않지만 바뀐 조사는 글자 하나의 치환으로 셉니다. 마지막 예제에서는 소수점 하나가 빠졌습니다. 이 수치는 예제의 표기 차이를 나타내며 금액의 의미나 모델의 성능을 판정하지 않습니다.
 
-## 1분 빠른 시작
+## 빠른 시작: 파일 두 개 평가하기
 
-### 1. 설치
+`score`는 0.0.0.25부터 쓸 수 있습니다. 기준 문장과 인식 결과를 각각 UTF-8 파일로 저장하고 **같은 발화를 같은 줄**에 두세요. 인식 결과가 없는 줄도 지우지 않습니다.
 
 ```bash
-python -m pip install -U nlptutti
-python -c "import nlptutti; print('nlptutti ready')"
+python -m pip install nlptutti==0.0.0.25
+nlptutti score ref.txt hyp.txt
 ```
 
-성공하면 `nlptutti ready`가 출력됩니다. Python 3.8부터 3.14까지의 환경을
-CI에서 테스트합니다.
+저장소에 들어 있는 예제로 확인하려면 저장소 폴더에서 실행하세요.
 
-### 2. 한 문장 평가
+```bash
+python -m pip install .
+nlptutti score examples/score-ref.txt examples/score-hyp.txt
+```
+
+위 세 발화의 전체(`micro`) 결과는 **CER 0.111111, WER 0.571429, CRR 0.890000**입니다. CLI의 단위는 비율(`1 = 100%`)입니다. `micro`는 편집 횟수를 합친 결과이고, `macro`는 발화별 점수의 단순 평균입니다.
+
+JSON 저장, ID로 정렬하는 CSV·JSONL, 입력 오류는 [단일 평가 사용법](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/0.0.0.25/docs/score.md)을 참고하세요.
+
+### Python에서 평가하기
 
 ```python
 import nlptutti as metrics
@@ -51,7 +50,10 @@ print(result["substitutions"])       # 1
 CER와 WER는 낮을수록 좋고 완전 일치는 `0.0`입니다. CRR은 높을수록 좋고
 완전 일치는 `1.0`입니다.
 
-### 3. 두 STT 시스템 비교
+## 선택: 두 STT 시스템 비교
+
+<details>
+<summary>서로 다른 시스템의 결과가 둘 이상일 때만 펼치세요.</summary>
 
 ```python
 import nlptutti as metrics
@@ -80,7 +82,7 @@ for system in report["systems"]:
 단순 평균입니다. 논문이나 모델 벤치마크에서는 보통 `rate_mode="standard"`와
 `micro`를 먼저 봅니다.
 
-### 4. JSON과 Markdown으로 저장
+### 비교 결과를 JSON과 Markdown으로 저장
 
 저장소의 [`examples/comparison_input.json`](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/examples/comparison_input.json)은
 바로 위 Python 예제와 같은 입력입니다.
@@ -116,6 +118,8 @@ comparison-report/report.md
 입력 형식, 오류 처리, paired bootstrap과 결과 해석은
 [시스템 비교 매뉴얼](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/comparison.md)에 정리했습니다.
 
+</details>
+
 ### 다음 평가로 이어가기 (0.0.0.24부터)
 
 - [저장된 STT 파일 비교](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/docs/file-comparison.md): text·JSON·SRT·TSV와 명시적 Azure/Whisper 응답을 파일 목록으로 연결합니다.
@@ -125,22 +129,20 @@ comparison-report/report.md
 
 ## 기본값부터 확인하기
 
-기존 사용자 결과를 바꾸지 않기 위해 정규화 관련 기본값은 그대로 유지합니다.
+분모·띄어쓰기·Unicode 기본값은 그대로이며, 문장부호 제거에서 숫자 사이의 점만 예외로 둡니다.
 
 | 옵션 | 기본값 | 의미 |
 | --- | --- | --- |
 | `rate_mode` | `"normalized"` | 삽입 오류를 분모에도 넣는 Nlptutti 기존 계산식입니다. 입력 문자열을 바꾸는 옵션이 아닙니다. |
 | `rate_mode="standard"` | 직접 지정 | 참조 길이를 분모로 쓰는 표준 CER/WER입니다. 삽입이 많으면 1보다 클 수 있습니다. |
-| `rm_punctuation` | `True` | 평가 전에 문장부호를 제거합니다. CER/CRR은 이 값과 관계없이 공백을 제거합니다. |
+| `rm_punctuation` | `True` | Unicode 문장부호를 제거하되 양옆이 십진 숫자인 ASCII `.`은 보존합니다. 공백을 제거하기 **전**에 판단하므로 `1 . 5`의 점은 지웁니다. |
 | `unicode_normalization` | `None` | Unicode 표현을 그대로 둡니다. 조합형 혼입을 정리할 때만 `"NFC"` 등을 지정합니다. |
 
 비교 API에서 선택한 Unicode 정규화는 키워드·개체명 사전과 조사·어미에도
 적용합니다. 단독 `evaluate_keywords`에서도 같은 옵션을 선택할 수 있습니다.
 키워드 매칭은 구두점을 제거하지 않으므로 `C++`와 `C`를 다르게 봅니다.
 
-기존 결과를 재현할 때는 기본 `normalized`를 유지하고, 새 공식 비교에서는
-`standard`를 직접 지정합니다. 두 모드의 숫자는 같은 열에서 비교하면 안
-됩니다.
+예전 `3.5만 원 / 35만 원`이나 `수수료 1.5% / 수수료 15%`의 CER/WER 0을 재현하려면 **별도 환경에 `python -m pip install nlptutti==0.0.0.24`**를 설치하고 당시 분모와 전처리 설정을 사용하세요. `--keep-punctuation`은 과거값 재현 옵션이 아니라 모든 문장부호를 **남기는** 옵션입니다. 새 기준과 예전 기준으로 계산한 점수를 같은 열에서 비교하지 마세요.
 
 ## 어떤 함수를 선택할까
 
@@ -222,6 +224,13 @@ report = metrics.compare_systems(
 
 ## 계산식
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hyeonsangjeon/computing-Korean-STT-error-rates/main/pic/FORMULA_CASE.png" alt="표준 CER·WER와 Nlptutti normalized 오류율 공식" width="640">
+</p>
+<p align="center">
+  <sub><strong>S</strong> 치환 · <strong>D</strong> 삭제 · <strong>I</strong> 삽입 · <strong>N</strong> 참조 단위 수 · <strong>C</strong> 정답 일치 수</sub>
+</p>
+
 표준 CER/WER는 치환(S), 삭제(D), 삽입(I), 정답 토큰(C)을 사용합니다.
 
 ```text
@@ -250,6 +259,12 @@ normalized: (S + D + I) / (S + D + I + C)
 고정했습니다.
 
 ## 라이선스
+
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/LICENSE)
+[![Downloads](https://static.pepy.tech/badge/nlptutti)](https://pepy.tech/project/nlptutti)
+[![PyPI version](https://badge.fury.io/py/nlptutti.svg)](https://pypi.org/project/nlptutti/)
+[![Tests](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml/badge.svg)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
+[![Tested Python](https://img.shields.io/badge/tested%20python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=flat-square)](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/actions/workflows/test.yml)
 
 코드는 [MIT License](https://github.com/hyeonsangjeon/computing-Korean-STT-error-rates/blob/main/LICENSE)로 배포됩니다. 이 저장소는 STT 모델, 가중치,
 음성 데이터셋을 포함하지 않으며 외부 모델·데이터의 라이선스는 각각 별도로

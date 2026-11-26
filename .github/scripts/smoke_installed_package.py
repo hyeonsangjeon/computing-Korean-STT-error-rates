@@ -68,6 +68,14 @@ def _verify_console_script():
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
+        ref, hyp = root / "기준.txt", root / "전사.txt"
+        ref.write_text("3.5만 원\n부산 바다\n", encoding="utf-8")
+        hyp.write_text("35만 원\n부산바다\n", encoding="utf-8")
+        score = json.loads(subprocess.check_output(
+            [executable, "score", str(ref), str(hyp), "--format", "json"], encoding="utf-8"
+        ))
+        assert score["corpus"]["cer"]["deletions"] == 1
+        assert score["corpus"]["crr"]["micro"] == 0.89
         input_path = root / "비교 입력.json"
         output_dir = root / "비교 결과"
         subprocess.run([executable, "sample", "--output", str(input_path)], check=True)
@@ -99,7 +107,7 @@ def _verify_console_script():
         )
         markdown_report = (output_dir / "report.md").read_text(encoding="utf-8")
 
-    assert json_report["schema"] == "nlptutti.comparison/1.0"
+    assert json_report["schema"] == metrics.COMPARISON_SCHEMA
     assert json_report["systems"][1]["metrics"]["cer"]["micro"] == 0.0
     assert "| candidate | 0.000000 |" in markdown_report
 

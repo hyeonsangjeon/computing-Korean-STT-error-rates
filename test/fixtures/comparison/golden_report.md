@@ -1,10 +1,11 @@
 # Nlptutti comparison report
 
-- Schema: `nlptutti.comparison/1.0`
+- Schema: `nlptutti.comparison/1.1`
 - Evaluator: `nlptutti test-version`
 - Items: 2
 - Rate mode: `standard`
 - Remove punctuation: `true`
+- Punctuation policy: `decimal-aware`
 - Unicode normalization: `none`
 - Paired bootstrap: `0` resamples, seed `42`, confidence `0.950000`
 

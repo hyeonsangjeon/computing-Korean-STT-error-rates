@@ -114,6 +114,7 @@ transcript = metrics.parse_transcript(tsv, "tsv")
     "options": {
         "rate_mode": "standard",
         "rm_punctuation": True,
+        "punctuation_policy": "decimal-aware",
         "unicode_normalization": None,
     },
     "metrics": {

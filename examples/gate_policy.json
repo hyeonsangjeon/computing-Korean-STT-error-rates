@@ -1,10 +1,11 @@
 {
   "schema": "nlptutti.gate-policy/1.0",
-  "report_schema": "nlptutti.comparison/1.0",
+  "report_schema": "nlptutti.comparison/1.1",
   "baseline": "baseline",
   "candidate": "candidate",
   "rate_mode": "standard",
   "rm_punctuation": true,
+  "punctuation_policy": "decimal-aware",
   "unicode_normalization": null,
   "score_unit": "ratio",
   "evaluation_config_sha256": null,

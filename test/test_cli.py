@@ -88,7 +88,7 @@ class TestCli(unittest.TestCase):
             markdown_report = (output_dir / "report.md").read_text(encoding="utf-8")
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(json_report["schema"], "nlptutti.comparison/1.0")
+        self.assertEqual(json_report["schema"], "nlptutti.comparison/1.1")
         self.assertIn("Nlptutti comparison report", markdown_report)
 
     def test_compare_enables_korean_diagnostics_explicitly(self):

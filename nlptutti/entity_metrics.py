@@ -1,6 +1,5 @@
 import re
 import string
-import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import (
@@ -23,9 +22,11 @@ from nlptutti.asr_metrics import (
     _build_keyword_statistics,
     _calculate_error_rate,
     _coerce_sentence_pairs,
+    _is_removed_punctuation,
     _make_suffix_pattern,
     _normalize_unicode,
     _preprocess_cer_text,
+    _punctuation_policy,
     _prepare_keyword_entries,
     _resolve_rate_mode,
     _resolve_unicode_normalization,
@@ -285,7 +286,7 @@ def _preprocess_with_offsets(text: str, rm_punctuation: bool) -> Tuple[str, List
     for offset, character in enumerate(text):
         if character in string.whitespace:
             continue
-        if rm_punctuation and unicodedata.category(character).startswith("P"):
+        if rm_punctuation and _is_removed_punctuation(text, offset):
             continue
         characters.append(character)
         offsets.append(offset)
@@ -688,6 +689,7 @@ def _build_final_result(
     result: Dict[str, object] = {
         "rate_mode": rate_mode,
         "rm_punctuation": rm_punctuation,
+        "punctuation_policy": _punctuation_policy(rm_punctuation),
         "unicode_normalization": unicode_normalization,
         "aliases_enabled": any(definition.aliases for definition in definitions),
         "entity_cer": entity_cer,

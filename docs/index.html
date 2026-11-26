@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<title>Nlptutti · 한국어 STT 오류율</title>
+<style>
+  * { box-sizing: border-box }
+  html { background: #f6f7f4; color: #182822; font: 16px/1.6 system-ui, sans-serif }
+  body { max-width: 54rem; margin: auto; padding: clamp(1rem, 4vw, 3rem) }
+  header, section, footer { margin-bottom: 1.4rem }
+  h1, h2, p { margin: 0 0 .5rem }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); line-height: 1.2 }
+  h2 { font-size: 1.2rem }
+  .brand, .caption { color: #42574d; font-size: .92rem }
+  .brand { font-weight: 700; letter-spacing: .08em }
+  .sheet { background: white; border: 1px solid #cbd4cb; border-radius: .8rem; padding: clamp(1rem, 3vw, 1.6rem) }
+  .pair, .scores { display: grid; gap: 1rem; margin: 1rem 0 }
+  .pair { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)) }
+  .scores { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)) }
+  .scores div { border-left: 3px solid #3b7863; padding-left: .8rem }
+  .scores dt { font-size: .9rem }
+  .scores dd { font-size: 1.8rem; font-weight: 650; font-variant-numeric: tabular-nums; margin: 0 }
+  textarea, button, select { font: inherit }
+  textarea { resize: vertical; width: 100%; min-height: 5.6rem; padding: .6rem; border: 1px solid #82988a; border-radius: .4rem }
+  label span { display: block; font-weight: 600 }
+  button, select { border: 1px solid #849a8c; background: white; color: inherit; border-radius: .4rem; padding: .36rem .7rem }
+  button, summary { cursor: pointer }
+  button:hover { background: #e8f0eb }
+  .primary { background: #155741; border-color: #155741; color: white; padding: .55rem 1.2rem; font-weight: 650 }
+  .primary:hover { background: #114735 }
+  :focus-visible { outline: 3px solid #0066b5; outline-offset: 2px }
+  .examples, .settings { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center }
+  details { margin: .6rem 0 1rem }
+  details p, .settings { margin-top: .5rem }
+  code { overflow-wrap: anywhere }
+  .strings { display: grid; grid-template-columns: auto 1fr; gap: .2rem .8rem; margin: .5rem 0 }
+  .strings dd { margin: 0; min-width: 0; overflow-wrap: anywhere }
+</style>
+<main>
+  <header>
+    <p class="brand">NLPTUTTI</p>
+    <h1>한국어 STT 오류율</h1>
+    <p>기준 문장과 음성 인식 결과 한 쌍을 비교합니다. 예제를 고르거나 내 문장을 넣어 보세요.</p>
+    <p class="caption">설치·로그인 없이 이 브라우저에서 계산합니다. 이 페이지는 입력을 전송하거나 저장하지 않습니다.</p>
+  </header>
+  <form id="scorer" autocomplete="off">
+    <section class="sheet" aria-label="한 문장 평가">
+      <div class="examples" aria-label="한국어 예제">
+        <span>예제</span>
+        <button type="button" data-example="particle">조사 바뀜</button>
+        <button type="button" data-example="spacing">띄어쓰기</button>
+        <button type="button" data-example="decimal">소수점 누락</button>
+      </div>
+      <div class="pair">
+        <label><span>기준 문장</span><textarea id="ref" spellcheck="false">오늘 날씨가 맑습니다</textarea></label>
+        <label><span>음성 인식 결과</span><textarea id="hyp" spellcheck="false">오늘 날씨는 맑습니다</textarea></label>
+      </div>
+      <details>
+        <summary>평가 설정</summary>
+        <div class="settings">
+          <label>분모 <select id="mode"><option>normalized</option><option>standard</option></select></label>
+          <label>Unicode <select id="norm"><option value="">원문</option><option>NFC</option><option>NFD</option><option>NFKC</option><option>NFKD</option></select></label>
+          <label><input id="keep" type="checkbox"> 문장부호 모두 유지</label>
+        </div>
+        <p class="caption">기본 분모는 기준 길이 + 삽입 수입니다. standard는 기준 길이만 사용하므로 오류율이 100%를 넘을 수 있습니다. 기본 문장부호 처리에서도 숫자 사이의 점은 보존합니다.</p>
+      </details>
+      <button class="primary" type="submit">오류율 계산</button>
+    </section>
+  </form>
+  <section class="sheet" aria-live="polite" aria-atomic="true" aria-label="계산 결과">
+    <h2>한 문장 결과</h2>
+    <div id="result" hidden>
+      <dl class="scores">
+        <div><dt>문자 오류율 · CER</dt><dd id="cer"></dd></div>
+      </dl>
+      <p id="reason"></p>
+      <details>
+        <summary>원문과 실제 채점한 글자 보기</summary>
+        <p class="caption">원문에서 ␠는 공백, ⇥는 탭, ↵는 줄바꿈입니다.</p>
+        <dl class="strings">
+          <dt>기준 원문</dt><dd><code id="original-ref"></code></dd>
+          <dt>인식 원문</dt><dd><code id="original-hyp"></code></dd>
+          <dt>CER 기준</dt><dd><code id="scored-ref"></code></dd>
+          <dt>CER 인식</dt><dd><code id="scored-hyp"></code></dd>
+        </dl>
+        <p id="counts"></p>
+      </details>
+      <details>
+        <summary>어절 기준(WER)과 문자 인식률(CRR) 보기</summary>
+        <dl class="scores">
+          <div><dt>어절 오류율 · WER</dt><dd id="wer"></dd></div>
+          <div><dt>문자 인식률 · CRR</dt><dd id="crr"></dd></div>
+        </dl>
+        <p class="caption">WER는 공백으로 나눈 어절을 비교합니다. CRR은 1 − CER를 소수 둘째 자리로 반올림한 값입니다.</p>
+      </details>
+    </div>
+    <p id="note" class="caption"></p>
+  </section>
+  <noscript>계산하려면 JavaScript를 켜거나 아래의 로컬 CLI를 사용하세요.</noscript>
+  <footer>
+    <details>
+      <summary>여러 발화를 파일로 평가하려면</summary>
+      <p><code>python -m pip install nlptutti==0.0.0.25</code>로 설치한 뒤
+        <code>nlptutti score ref.txt hyp.txt</code>를 실행하세요. 같은 줄 번호끼리 평가합니다.
+        이 화면은 한 쌍만 계산하며, 모델의 우열이나 금액·이름의 의미를 판정하지 않습니다.</p>
+    </details>
+  </footer>
+</main>
+<script id="score-kernel">
+"use strict";
+function scorePair(reference, hypothesis, mode = "normalized", keep = false, normalization = "") {
+  function preprocess(text) {
+    if (Array.from(text).length > 2000) throw new RangeError("한 문장당 2,000자까지 계산합니다. 긴 발화는 파일 평가를 사용하세요.");
+    const chars = Array.from(normalization ? text.normalize(normalization) : text);
+    const digit = /^\p{Nd}$/u;
+    return chars.filter((c, i) => keep || !/\p{P}/u.test(c) ||
+      (c === "." && i > 0 && i + 1 < chars.length && digit.test(chars[i-1]) && digit.test(chars[i+1]))).join("");
+  }
+  function measure(ref, hyp) {
+    if (ref.length * hyp.length > 4000000) throw new RangeError("정규화한 문장이 너무 깁니다. 파일 평가를 사용하세요.");
+    // Mirror levenshtein(hyp, ref): diagonal, removal from hyp, addition to hyp.
+    // Tracking the insertion count on that path determines S and D from the two lengths.
+    let prev = Int32Array.from({length: ref.length + 1}, (_, j) => j);
+    let curr = new Int32Array(prev.length);
+    let prevIns = new Int32Array(prev.length), currIns = new Int32Array(prev.length);
+    for (let i = 1; i <= hyp.length; i++) {
+      curr[0] = currIns[0] = i;
+      for (let j = 1; j < prev.length; j++) {
+        const diag = prev[j-1] + Number(hyp[i-1] !== ref[j-1]);
+        const up = prev[j] + 1, left = curr[j-1] + 1;
+        curr[j] = Math.min(diag, up, left);
+        currIns[j] = curr[j] === diag ? prevIns[j-1] : curr[j] === up ? prevIns[j] + 1 : currIns[j-1];
+      }
+      [prev, curr] = [curr, prev];
+      [prevIns, currIns] = [currIns, prevIns];
+    }
+    const edits = prev[ref.length], insertions = prevIns[ref.length];
+    const deletions = ref.length - hyp.length + insertions;
+    const denominator = ref.length + (mode === "standard" ? 0 : insertions);
+    return {rate: denominator ? edits / denominator : insertions,
+            substitutions: edits - deletions - insertions, deletions, insertions};
+  }
+  const a = preprocess(reference), b = preprocess(hypothesis);
+  // jiwer CER removes string.whitespace; Python str.split() recognizes more for WER.
+  const chars = s => Array.from(s.replace(/[ \t\n\r\v\f]/g, ""));
+  const words = s => s.split(/[\p{White_Space}\u001c-\u001f]+/u).filter(Boolean);
+  const refChars = chars(a), hypChars = chars(b);
+  const cer = measure(refChars, hypChars), wer = measure(words(a), words(b));
+  const recognition = 1 - cer.rate;
+  // An exactly representable half-cent is an odd multiple of 1/8. Python rounds ties to even.
+  const crr = Math.abs((recognition * 8) % 2) === 1
+    ? Math.round(recognition * 50) / 50 : Number(recognition.toFixed(2));
+  return {cer, wer, crr, refChars, hypChars};
+}
+function describe(reference, hypothesis, {cer, refChars, hypChars}) {
+  const errors = cer.substitutions + cer.deletions + cer.insertions;
+  if (!errors) {
+    const same = refChars.length ? `채점한 ${refChars.length}글자가 모두 일치합니다.` : "채점할 글자가 없습니다.";
+    const noSpaces = s => s.replace(/[ \t\n\r\v\f]/g, "");
+    if (reference === hypothesis || noSpaces(reference) !== noSpaces(hypothesis)) return same;
+    // A run of whitespace is one location between the same two non-space characters.
+    const gaps = s => s.split(/[^ \t\n\r\v\f]/u);
+    const left = gaps(reference), right = gaps(hypothesis);
+    const differences = left.filter((gap, i) => gap !== right[i]).length;
+    return `${same} 공백 차이 ${differences}곳은 CER에서 제외합니다.`;
+  }
+  if (errors === 1) {
+    let i = 0;
+    while (i < refChars.length && i < hypChars.length && refChars[i] === hypChars[i]) i++;
+    if (cer.substitutions) return `‘${refChars[i]} → ${hypChars[i]}’ 한 글자 치환입니다.`;
+    if (cer.deletions) return `기준 문장의 ‘${refChars[i]}’ 한 글자가 빠졌습니다.`;
+    return `인식 결과에 ‘${hypChars[i]}’ 한 글자가 더 있습니다.`;
+  }
+  return `문자 편집 ${errors}회: 치환 ${cer.substitutions} · 삭제 ${cer.deletions} · 삽입 ${cer.insertions}`;
+}
+</script>
+<script>
+"use strict";
+const byId = id => document.getElementById(id);
+function calculate() {
+  try {
+    const ref = byId("ref").value, hyp = byId("hyp").value;
+    const scores = scorePair(ref, hyp, byId("mode").value, byId("keep").checked, byId("norm").value);
+    const percent = new Intl.NumberFormat("ko-KR", {style: "percent", maximumFractionDigits: 2});
+    byId("cer").textContent = percent.format(scores.cer.rate);
+    byId("wer").textContent = percent.format(scores.wer.rate);
+    byId("crr").textContent = percent.format(scores.crr);
+    byId("reason").textContent = describe(ref, hyp, scores);
+    const visible = s => s.replace(/ /g, "␠").replace(/\t/g, "⇥").replace(/\r\n|[\r\n]/g, "↵");
+    byId("original-ref").textContent = visible(ref) || "(비어 있음)";
+    byId("original-hyp").textContent = visible(hyp) || "(비어 있음)";
+    byId("scored-ref").textContent = scores.refChars.join("") || "(비어 있음)";
+    byId("scored-hyp").textContent = scores.hypChars.join("") || "(비어 있음)";
+    const {substitutions, deletions, insertions} = scores.cer;
+    byId("counts").textContent = `문자 편집: 치환 ${substitutions} · 삭제 ${deletions} · 삽입 ${insertions}`;
+    byId("note").textContent = "CER는 공백을 빼고 글자를 비교합니다. 숫자 사이의 소수점과 바뀐 조사 글자는 채점합니다.";
+    byId("result").hidden = false;
+  } catch (error) {
+    byId("result").hidden = true;
+    byId("note").textContent = "계산할 수 없습니다: " + error.message;
+  }
+}
+byId("scorer").addEventListener("submit", e => { e.preventDefault(); calculate(); });
+byId("scorer").addEventListener("input", () => {
+  byId("result").hidden = true;
+  byId("note").textContent = "입력이나 설정이 바뀌었습니다. 오류율 계산을 눌러 주세요.";
+});
+const examples = {
+  particle: ["오늘 날씨가 맑습니다", "오늘 날씨는 맑습니다"],
+  spacing: ["부산 바다", "부산바다"],
+  decimal: ["3.5만 원", "35만 원"]
+};
+for (const button of document.querySelectorAll("[data-example]")) {
+  button.addEventListener("click", () => {
+    [byId("ref").value, byId("hyp").value] = examples[button.dataset.example];
+    calculate();
+  });
+}
+calculate();
+</script>
+</html>

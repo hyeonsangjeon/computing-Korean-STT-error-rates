@@ -71,7 +71,7 @@ nlptutti compare examples/comparison_input.json \
   --output-dir comparison-report
 ```
 
-- `report.json`: `nlptutti.comparison/1.0` schema의 자동화용 결과
+- `report.json`: `nlptutti.comparison/1.1` schema의 자동화용 결과 (0.0.0.24 배포판은 1.0)
 - `report.md`: 같은 결과를 표로 보여 주는 검토용 문서
 
 `--output report.json`은 JSON 하나만 저장합니다. `--output`과 `--output-dir`은
@@ -82,7 +82,7 @@ nlptutti compare examples/comparison_input.json \
 | 옵션 | 기본값 | 정책 |
 | --- | --- | --- |
 | `rate_mode` | `"normalized"` | 기존 Nlptutti 분모를 보존합니다. 공식 비교는 `"standard"`를 직접 지정합니다. |
-| `rm_punctuation` | `True` | 문장부호를 제거합니다. CLI에서는 `--keep-punctuation`으로 끕니다. |
+| `rm_punctuation` | `True` | 양옆이 십진 숫자인 `.`을 제외한 문장부호를 제거합니다. CLI에서는 `--keep-punctuation`으로 끕니다. |
 | `unicode_normalization` | `None` | Unicode 원문을 유지합니다. 필요한 경우에만 NFC/NFD/NFKC/NFKD를 지정합니다. |
 | `include_transcripts` | `False` | 문장 전체를 담는 `raw_inputs`를 만들지 않습니다. 상세 평가의 오류 텍스트까지 숨기는 옵션은 아닙니다. |
 | `privacy_mode` | `"detailed"` | 기존 상세 결과를 유지합니다. 외부 공유에는 `"aggregate"`를 직접 지정합니다. |

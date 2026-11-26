@@ -1,6 +1,6 @@
 # STT 결과 한 개 평가하기
 
-`python -m pip install nlptutti==0.0.0.25`로 설치합니다. **기준 문장(ref)을 먼저**, 음성 인식 결과(hyp)를 두 번째에 넣습니다.
+`python -m pip install nlptutti==0.0.0.26`로 설치합니다. **기준 문장(ref)을 먼저**, 음성 인식 결과(hyp)를 두 번째에 넣습니다.
 
 ```bash
 nlptutti score ref.txt hyp.txt

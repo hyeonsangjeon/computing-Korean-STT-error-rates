@@ -59,6 +59,13 @@ class TestDocumentationExamples(unittest.TestCase):
     def test_readme_exposes_the_verified_first_run_path(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
+        intro = readme.split("\n## ", 1)[0]
+        self.assertIn("(https://hyeonsangjeon.github.io/job-transcribe/nlptutti/#calculator)", intro)
+        self.assertRegex(
+            intro,
+            r"\(https://github\.com/hyeonsangjeon/computing-Korean-STT-error-rates/"
+            r"releases/download/[^/]+/nlptutti-calculator\.html\)",
+        )
         required_fragments = [
             "python -m pip install .",
             "nlptutti score examples/score-ref.txt examples/score-hyp.txt",
